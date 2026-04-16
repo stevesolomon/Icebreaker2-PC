@@ -141,6 +141,7 @@ void anim_user::AdvanceFrame(void)
 	current_frame_number = anim_source_pointer->anim_pointer->cur_Frame;
 	current_frame_ccb->ccb_SourcePtr = next_frame_ccb->ccb_SourcePtr;
 	current_frame_ccb->ccb_PLUTPtr   = next_frame_ccb->ccb_PLUTPtr;
+	current_frame_ccb->texture       = next_frame_ccb->texture;
 }
 
 /****************************  anim_user::RefetchFrame  *********************************
@@ -155,6 +156,7 @@ void anim_user::RefetchFrame(void)
 	next_frame_ccb = GetAnimCel(anim_source_pointer->anim_pointer, anim_frame_rate);
 	current_frame_ccb->ccb_SourcePtr = next_frame_ccb->ccb_SourcePtr;
 	current_frame_ccb->ccb_PLUTPtr   = next_frame_ccb->ccb_PLUTPtr;
+	current_frame_ccb->texture       = next_frame_ccb->texture;
 }
 
 /****************************  anim_user::DisplayFrame  *********************************
@@ -179,6 +181,7 @@ void anim_user::Restart(void)
 	current_frame_number = anim_source_pointer->anim_pointer->cur_Frame;
 	current_frame_ccb->ccb_SourcePtr = next_frame_ccb->ccb_SourcePtr;
 	current_frame_ccb->ccb_PLUTPtr   = next_frame_ccb->ccb_PLUTPtr;
+	current_frame_ccb->texture       = next_frame_ccb->texture;
 	dormant = TRUE;
 }
 

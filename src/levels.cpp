@@ -735,6 +735,14 @@ this code into the symbol for the corresponding tile. If no known symbol matches
 the value AMBIGUOUS is returned.
 *****************************************************************************************/
 
+/* Build a big-endian 16-bit tile code from two ASCII chars.
+   The original 3DO was big-endian, so the switch cases below
+   assume the first character occupies the high byte. */
+static int16 MakeTileCode(const char *p)
+{
+	return (int16)(((unsigned char)p[0] << 8) | (unsigned char)p[1]);
+}
+
 int32 TranslateTileCode (int16 tile_code)
 {
 	int32 tile;
@@ -840,7 +848,6 @@ void  LoadLevel (int32 level)
 	int32	i,j;
 	int32	bytes_read;
 	char	*input_index;
-	int16	*short_pointer;
 	int32 seeker_type, row, column, direction;
 
 	for (i = 0; i < MAX_FILE_BYTES/4; i++)
@@ -972,8 +979,7 @@ void  LoadLevel (int32 level)
 				input_index++;
 			
 			/* translate the 2 character code into the correct type of tile: */
-			short_pointer = (int16 *) input_index;
-			level_lookup_table[i][j] = TranslateTileCode (*(short_pointer));
+			level_lookup_table[i][j] = TranslateTileCode (MakeTileCode(input_index));
 			if (level_lookup_table[i][j] == AMBIGUOUS)
 			{
 				printf("Warning: invalid tile (%c%c).\n",*(input_index),*(input_index+1));
@@ -998,8 +1004,7 @@ void  LoadLevel (int32 level)
  	pavement.wasteland_descriptor = DA_TILE;
 	while ((*(input_index) == 13) || (*(input_index) == 32) || (*(input_index) == 42))
 		input_index++;
-	short_pointer = (int16 *) input_index;
-	pavement.wasteland_descriptor = TranslateTileCode (*(short_pointer));
+	pavement.wasteland_descriptor = TranslateTileCode (MakeTileCode(input_index));
 	if (pavement.wasteland_descriptor == AMBIGUOUS)
 	{
 		printf("invalid wasteland descriptor.\n");
@@ -1023,7 +1028,7 @@ void  LoadLevel (int32 level)
 	/**********************************************************************************/
 	// Examine seeker specs and fill out art usage table accordingly:
 	/**********************************************************************************/
-	while (*(input_index) != 0xFF)
+	while ((unsigned char)*(input_index) != 0xFF)
 	{
 		if ((*(input_index) == 13) || (*(input_index) == 32) || (*(input_index) == 42))
 			input_index++;
@@ -1110,7 +1115,7 @@ void  seeker::InitializeSeekers (int32 level, int16 skill_level)
 
 	difficulty = 0;
 	this_mode_has_seekers = FALSE;
-	while (*(input_index) != 0xFF)
+	while ((unsigned char)*(input_index) != 0xFF)
 	{
 		if (*(input_index) == '*')
 		{
