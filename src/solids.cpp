@@ -1556,6 +1556,8 @@ void  solids::MaintainAnimatedObjects(void)
 				                 = traversal_ptr->solid_anim.current_frame_ccb->ccb_SourcePtr;
 				traversal_ptr->solids_entry->cel->ccb_PLUTPtr
 				                 = traversal_ptr->solid_anim.current_frame_ccb->ccb_PLUTPtr;
+				traversal_ptr->solids_entry->cel->texture
+				                 = traversal_ptr->solid_anim.current_frame_ccb->texture;
 				traversal_ptr = traversal_ptr->next;
 			}
 			else

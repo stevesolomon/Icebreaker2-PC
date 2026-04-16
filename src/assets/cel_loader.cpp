@@ -307,8 +307,9 @@ std::string GetPngPath(const char *cel_path)
    ParseCelData — main entry point for decoding a 3DO CEL binary blob
    ═══════════════════════════════════════════════════════════════════════════ */
 
-SDL_Surface *ParseCelData(const uint8 *data, size_t size)
+SDL_Surface *ParseCelData(const uint8 *data, size_t size, uint32 *out_pixc)
 {
+    if (out_pixc) *out_pixc = 0;
     if (!data || size < 8) {
         SDL_Log("ParseCelData: Data too small");
         return nullptr;
@@ -340,6 +341,7 @@ SDL_Surface *ParseCelData(const uint8 *data, size_t size)
     hdr.chunk_type = swap32(hdr.chunk_type);
     hdr.chunk_size = swap32(hdr.chunk_size);
     hdr.ccb_Flags  = swap32(hdr.ccb_Flags);
+    hdr.ccb_PIXC   = swap32(hdr.ccb_PIXC);
     hdr.ccb_PRE0   = swap32(hdr.ccb_PRE0);
     hdr.ccb_PRE1   = swap32(hdr.ccb_PRE1);
     hdr.ccb_Width  = (int32)swap32((uint32)hdr.ccb_Width);
@@ -349,6 +351,9 @@ SDL_Surface *ParseCelData(const uint8 *data, size_t size)
         SDL_Log("ParseCelData: Not a CCB chunk (got 0x%08X)", hdr.chunk_type);
         return nullptr;
     }
+
+    /* Output PIXC if requested */
+    if (out_pixc) *out_pixc = hdr.ccb_PIXC;
 
     /* ── 3. Extract dimensions ─────────────────────────────────────────── */
     int width  = hdr.ccb_Width;
@@ -538,6 +543,7 @@ Sprite *LoadCelFile(const char *filename)
     s->ccb_NextPtr = nullptr;
     s->ccb_HDX     = 1 << 20;
     s->ccb_VDY     = 1 << 16;
+    /* ccb_PIXC stays 0 (opaque) — game code sets it at runtime when needed */
 
     /* Enable alpha blending so transparent pixels work */
     if (s->texture)

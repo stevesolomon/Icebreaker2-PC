@@ -28,6 +28,7 @@ struct Animation {
     int32 &cur_frame   = cur_Frame;
     int32 frame_rate;                      /* 16.16 fixed-point increment per call */
     bool  loop;                            /* loop when reaching end? */
+    uint32 ccb_PIXC;                       /* shared PIXC from CCB (blend mode)   */
 };
 
 /* Keep the ANIM name for source compatibility */

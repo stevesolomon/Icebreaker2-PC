@@ -45,6 +45,7 @@ Animation *LoadAnimFile(const char *filename)
     anim->cur_frame  = 0;
     anim->frame_rate = 1 << 16;
     anim->loop       = true;
+    anim->ccb_PIXC   = 0;
 
     const uint8_t *scan = data.data();
     const uint8_t *end  = data.data() + file_size;
@@ -84,6 +85,9 @@ Animation *LoadAnimFile(const char *filename)
 
         if (ct == CHUNK_CCB) {
             shared_ccb.assign(scan, scan + cs);
+            /* Extract ccb_PIXC from the shared CCB (offset 60 in the chunk) */
+            if (cs >= 64)
+                anim->ccb_PIXC = swap32(*(uint32 *)(scan + 60));
         } else if (ct == CHUNK_PLUT) {
             shared_plut.assign(scan, scan + cs);
         } else if (ct == CHUNK_PDAT && !shared_ccb.empty()) {
@@ -150,6 +154,7 @@ Sprite *GetAnimCel(Animation *anim, frac16 frame_increment)
     g_anim_sprite.ccb_Height = anim->heights[frame_idx];
     g_anim_sprite.ccb_HDX    = 1 << 20;
     g_anim_sprite.ccb_VDY    = 1 << 16;
+    g_anim_sprite.ccb_PIXC   = anim->ccb_PIXC;
 
     return &g_anim_sprite;
 }

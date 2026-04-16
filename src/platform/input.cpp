@@ -3,6 +3,7 @@
  *  Part of the Icebreaker 2 Windows port
  ******************************************************************************/
 #include "input.h"
+#include <cstdlib>
 
 /* ── Module state ────────────────────────────────────────────────────────── */
 static bool             g_quit_requested = false;
@@ -53,7 +54,7 @@ void PumpInputEvents(void)
         switch (ev.type) {
         case SDL_QUIT:
             g_quit_requested = true;
-            break;
+            exit(0);
 
         case SDL_CONTROLLERDEVICEADDED:
             if (!g_gamepad) {

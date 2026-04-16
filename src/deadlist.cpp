@@ -122,6 +122,11 @@ bool  dead_list::MaintainMorgue(void)
 		else /* the scene ain't done, advance frame and keep going */
 		{
 			traversal_ptr->death_scene.AdvanceFrame();
+			/* If the animation just wrapped back to frame 0, hide the sprite
+			   immediately to prevent a 1-frame flicker of the first frame
+			   before AnimComplete() removes it next tick. */
+			if (traversal_ptr->death_scene.current_frame_number == 0)
+				traversal_ptr->death_scene.current_frame_ccb->ccb_Flags |= CCB_SKIP;
 			lagging_ptr = traversal_ptr;
 			traversal_ptr = traversal_ptr->next;
 		}

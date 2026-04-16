@@ -154,6 +154,30 @@ void UnloadCel(CCB *cel)
     UnloadSprite(cel);
 }
 
+/* ── PIXC → alpha mapping ─────────────────────────────────────────────────
+   The 3DO PIXC register controls pixel blending. The upper 16 bits of
+   ccb_PIXC (P-mode 0) determine source/destination mixing.
+   Common values from this game:
+     0x1F00 = 100% opaque (source only)
+     0x0991 =  75% opaque (source × 3/4 + dest × 1/4)
+     0x0581 =  50% opaque (source × 1/2 + dest × 1/2)
+     0x1F81 =  50% opaque (alternate encoding)
+     0x89D1 =  25% opaque (source × 1/4 + dest × 3/4)
+   ─────────────────────────────────────────────────────────────────────── */
+static uint8 PixcToAlpha(uint32 pixc)
+{
+    uint16 pmode0 = (uint16)(pixc >> 16);
+    switch (pmode0) {
+    case 0x1F00: return 255;  /* fully opaque */
+    case 0x0991: return 191;  /* ~75% */
+    case 0x0581: return 128;  /* 50% */
+    case 0x1F81: return 128;  /* 50% (alternate) */
+    case 0x89D1: return 64;   /* ~25% */
+    case 0x0500: return 0;    /* invisible */
+    default:     return 255;  /* unknown = opaque */
+    }
+}
+
 /* ── Rendering ───────────────────────────────────────────────────────────── */
 
 void DrawScreenCels(Screen *screen, CCB *cel_list)
@@ -169,7 +193,15 @@ void DrawScreenCels(Screen *screen, CCB *cel_list)
             dst.w = cel->ccb_Width;
             dst.h = cel->ccb_Height;
 
+            /* Apply PIXC-based alpha modulation if needed */
+            uint8 alpha = PixcToAlpha(cel->ccb_PIXC);
+            if (alpha < 255)
+                SDL_SetTextureAlphaMod(cel->texture, alpha);
+
             SDL_RenderCopy(g_renderer, cel->texture, nullptr, &dst);
+
+            if (alpha < 255)
+                SDL_SetTextureAlphaMod(cel->texture, 255);
         }
 
         if (cel->ccb_Flags & CCB_LAST) break;

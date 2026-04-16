@@ -58,8 +58,9 @@ Sprite *LoadCelFile(const char *filename);
 /* Load a 3DO CEL file and return as SDL_Surface (for further processing) */
 SDL_Surface *LoadCelToSurface(const char *filename);
 
-/* Parse raw CEL binary data into an SDL_Surface */
-SDL_Surface *ParseCelData(const uint8 *data, size_t size);
+/* Parse raw CEL binary data into an SDL_Surface.
+   If out_pixc is non-null, stores the ccb_PIXC value from the CCB header. */
+SDL_Surface *ParseCelData(const uint8 *data, size_t size, uint32 *out_pixc = nullptr);
 
 /* Check if a file is a valid 3DO CEL file */
 bool IsCelFile(const char *filename);
