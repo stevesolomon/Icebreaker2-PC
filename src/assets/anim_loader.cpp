@@ -5,7 +5,6 @@
 #include "anim_loader.h"
 #include "cel_loader.h"
 #include "platform/filesystem.h"
-#include <SDL_image.h>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -28,28 +27,8 @@ Animation *LoadAnimFile(const char *filename)
 {
     std::string path = TranslatePath(filename);
 
-    /* Try loading a sprite sheet (pre-converted) */
-    std::string png_path = GetPngPath(path.c_str());
-    /* TODO: If a .json metadata file exists alongside the PNG,
-       load as sprite sheet. For now, fall through to CEL parsing. */
-
-    /* Open the file and parse as 3DO ANIM */
     FILE *fp = fopen(path.c_str(), "rb");
     if (!fp) {
-        /* Try as a single image */
-        SDL_Surface *surf = IMG_Load(path.c_str());
-        if (surf) {
-            Animation *anim = new Animation();
-            anim->surfaces.push_back(surf);
-            anim->frames.push_back(SDL_CreateTextureFromSurface(GetRenderer(), surf));
-            anim->widths.push_back(surf->w);
-            anim->heights.push_back(surf->h);
-            anim->frame_count = 1;
-            anim->cur_frame   = 0;
-            anim->frame_rate  = 1 << 16;
-            anim->loop        = true;
-            return anim;
-        }
         SDL_Log("LoadAnimFile: Cannot open '%s'", path.c_str());
         return nullptr;
     }
@@ -67,56 +46,68 @@ Animation *LoadAnimFile(const char *filename)
     anim->frame_rate = 1 << 16;
     anim->loop       = true;
 
-    /* Scan through the file looking for CCB chunks (each is a frame) */
     const uint8_t *scan = data.data();
     const uint8_t *end  = data.data() + file_size;
 
-    while (scan + 8 <= end) {
-        uint32 chunk_type = swap32(*(uint32 *)scan);
-        uint32 chunk_size = swap32(*(uint32 *)(scan + 4));
+    /* Skip leading OFST wrapper if present */
+    if (scan + 8 <= end) {
+        uint32 ct = swap32(*(uint32 *)scan);
+        if (ct == CHUNK_OFST) {
+            uint32 cs = swap32(*(uint32 *)(scan + 4));
+            if (cs >= 8 && scan + cs <= end) scan += cs;
+        }
+    }
 
-        if (chunk_size < 8 || scan + chunk_size > end) break;
-
-        if (chunk_type == CHUNK_CCB) {
-            /* This chunk is a CEL frame — parse it */
-            /* We need to find the extent of this frame (CCB + PLUT + PDAT) */
-            const uint8_t *frame_start = scan;
-            const uint8_t *frame_scan  = scan + chunk_size;
-
-            /* Align */
-            while ((uintptr_t)frame_scan & 3) frame_scan++;
-
-            /* Consume following PLUT and PDAT chunks */
-            while (frame_scan + 8 <= end) {
-                uint32 ct = swap32(*(uint32 *)frame_scan);
-                uint32 cs = swap32(*(uint32 *)(frame_scan + 4));
-                if (cs < 8 || frame_scan + cs > end) break;
-                if (ct == CHUNK_PLUT || ct == CHUNK_PDAT) {
-                    frame_scan += cs;
-                    while ((uintptr_t)frame_scan & 3) frame_scan++;
-                } else {
-                    break;
-                }
+    /* Parse ANIM header — extract frameRate */
+    if (scan + 8 <= end) {
+        uint32 ct = swap32(*(uint32 *)scan);
+        uint32 cs = swap32(*(uint32 *)(scan + 4));
+        if (ct == CHUNK_ANIM && cs >= 8 && scan + cs <= end) {
+            if (cs >= 24) {
+                uint32 frameRate = swap32(*(uint32 *)(scan + 20));
+                if (frameRate > 0)
+                    anim->frame_rate = (int32)frameRate;
             }
+            scan += cs;
+        }
+    }
 
-            size_t frame_size = frame_scan - frame_start;
-            SDL_Surface *surf = ParseCelData(frame_start, frame_size);
+    /* Walk remaining chunks: collect shared CCB, optional PLUT,
+       then decode each PDAT as a frame using the shared CCB. */
+    std::vector<uint8_t> shared_ccb;
+    std::vector<uint8_t> shared_plut;
+
+    while (scan + 8 <= end) {
+        uint32 ct = swap32(*(uint32 *)scan);
+        uint32 cs = swap32(*(uint32 *)(scan + 4));
+        if (cs < 8 || scan + cs > end) break;
+
+        if (ct == CHUNK_CCB) {
+            shared_ccb.assign(scan, scan + cs);
+        } else if (ct == CHUNK_PLUT) {
+            shared_plut.assign(scan, scan + cs);
+        } else if (ct == CHUNK_PDAT && !shared_ccb.empty()) {
+            /* Build a synthetic single-CEL blob: CCB [+ PLUT] + PDAT */
+            std::vector<uint8_t> frame_data;
+            frame_data.insert(frame_data.end(), shared_ccb.begin(), shared_ccb.end());
+            if (!shared_plut.empty())
+                frame_data.insert(frame_data.end(), shared_plut.begin(), shared_plut.end());
+            frame_data.insert(frame_data.end(), scan, scan + cs);
+
+            SDL_Surface *surf = ParseCelData(frame_data.data(), frame_data.size());
             if (surf) {
                 anim->surfaces.push_back(surf);
-                anim->frames.push_back(SDL_CreateTextureFromSurface(GetRenderer(), surf));
+                SDL_Texture *tex = SDL_CreateTextureFromSurface(GetRenderer(), surf);
+                if (tex) SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
+                anim->frames.push_back(tex);
                 anim->widths.push_back(surf->w);
                 anim->heights.push_back(surf->h);
             }
-
-            scan = frame_scan;
-        } else if (chunk_type == CHUNK_ANIM) {
-            /* ANIM container header — skip to contents */
-            scan += 8; /* just skip the header, contents follow */
-        } else {
-            /* Unknown chunk — skip */
-            scan += chunk_size;
-            while ((uintptr_t)scan & 3) scan++;
         }
+        /* else: XTRA or unknown — skip */
+
+        scan += cs;
+        while ((uintptr_t)scan & 3) scan++;
     }
 
     anim->frame_count = (int32)anim->frames.size();

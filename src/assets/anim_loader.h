@@ -22,6 +22,10 @@ struct Animation {
     std::vector<int>           heights;    /* per-frame height */
     int32 num_Frames;                      /* total frames (3DO compat name) */
     int32 cur_Frame;                       /* 16.16 fixed-point current frame (3DO compat name) */
+
+    /* Aliases used by anim_loader.cpp internals */
+    int32 &frame_count = num_Frames;
+    int32 &cur_frame   = cur_Frame;
     int32 frame_rate;                      /* 16.16 fixed-point increment per call */
     bool  loop;                            /* loop when reaching end? */
 };

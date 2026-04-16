@@ -20,6 +20,9 @@
 #include <string>
 
 /* ── SDL2 ────────────────────────────────────────────────────────────────── */
+#ifndef SDL_MAIN_HANDLED
+#define SDL_MAIN_HANDLED
+#endif
 #include <SDL.h>
 #include <SDL_image.h>
 #include <SDL_mixer.h>
@@ -59,6 +62,7 @@ int32 ReadFile(const char *filename, int32 size, void *buffer, int32 offset);
 #define CreateProgram(a)        (0)
 #define LoadProgram(a)          (0)
 #define CloseItem(a)            ((void)0)
+#define DeleteItem(a)           ((void)0)
 
 /* SOPT flags for stream control */
 #define SOPT_FLUSH              0x00000001

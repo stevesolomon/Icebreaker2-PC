@@ -4,7 +4,9 @@
  ******************************************************************************/
 #include "graphics.h"
 #include "filesystem.h"
+#include "assets/cel_loader.h"
 #include <SDL_image.h>
+#include <SDL_ttf.h>
 #include <cstdlib>
 #include <cstring>
 
@@ -23,6 +25,11 @@ bool InitGraphics(ScreenCtx *sc, int num_pages)
 {
     if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0) {
         SDL_Log("SDL_InitSubSystem(VIDEO) failed: %s", SDL_GetError());
+        return false;
+    }
+
+    if (TTF_Init() != 0) {
+        SDL_Log("TTF_Init() failed: %s", TTF_GetError());
         return false;
     }
 
@@ -96,40 +103,15 @@ void CloseGraphics(ScreenCtx *sc)
     g_renderer  = nullptr;
     g_window    = nullptr;
     g_screenCtx = nullptr;
+    TTF_Quit();
 }
 
 /* ── Sprite Loading ──────────────────────────────────────────────────────── */
 
 Sprite *LoadSprite(const char *filename)
 {
-    std::string path = TranslatePath(filename);
-
-    SDL_Surface *surface = IMG_Load(path.c_str());
-    if (!surface) {
-        SDL_Log("LoadSprite: Failed to load '%s': %s", path.c_str(), IMG_GetError());
-        return nullptr;
-    }
-
-    Sprite *s = (Sprite *)calloc(1, sizeof(Sprite));
-    if (!s) {
-        SDL_FreeSurface(surface);
-        return nullptr;
-    }
-
-    s->surface    = surface;
-    s->texture    = SDL_CreateTextureFromSurface(g_renderer, surface);
-    s->ccb_Width  = surface->w;
-    s->ccb_Height = surface->h;
-    s->ccb_XPos   = 0;
-    s->ccb_YPos   = 0;
-    s->ccb_Flags  = 0;
-    s->ccb_NextPtr = nullptr;
-
-    /* Default scaling: 1:1 in 16.16 fixed-point */
-    s->ccb_HDX = 1 << 20;  /* 1.0 in 12.20 format (3DO convention) */
-    s->ccb_VDY = 1 << 16;  /* 1.0 in 16.16 */
-
-    return s;
+    /* Use the CEL loader which handles 3DO binary CEL, PNG fallback, etc. */
+    return LoadCelFile(filename);
 }
 
 Sprite *CreateEmptySprite(int width, int height)
@@ -213,31 +195,22 @@ void ClearScreen(ScreenCtx *sc)
 
 void FadeToBlack(ScreenCtx *sc, int32 frames)
 {
-    if (!sc || !sc->renderer || frames <= 0) return;
-
-    for (int32 i = 0; i <= frames; i++) {
-        /* Render current scene then overlay with increasing opacity */
-        uint8_t alpha = (uint8_t)((i * 255) / frames);
-        SDL_SetRenderDrawBlendMode(sc->renderer, SDL_BLENDMODE_BLEND);
-        SDL_SetRenderDrawColor(sc->renderer, 0, 0, 0, alpha);
-        SDL_RenderFillRect(sc->renderer, nullptr);
-        SDL_RenderPresent(sc->renderer);
-        SDL_Delay(16); /* ~60 FPS for smooth fade */
-    }
+    if (!sc || !sc->renderer) return;
+    (void)frames;
+    /* Simple immediate blackout — animated fade requires re-rendering the
+       scene each frame, which we don't have access to here. */
+    SDL_SetRenderDrawColor(sc->renderer, 0, 0, 0, 255);
+    SDL_RenderClear(sc->renderer);
+    SDL_RenderPresent(sc->renderer);
 }
 
 void FadeFromBlack(ScreenCtx *sc, int32 frames)
 {
-    if (!sc || !sc->renderer || frames <= 0) return;
-
-    for (int32 i = frames; i >= 0; i--) {
-        uint8_t alpha = (uint8_t)((i * 255) / frames);
-        SDL_SetRenderDrawBlendMode(sc->renderer, SDL_BLENDMODE_BLEND);
-        SDL_SetRenderDrawColor(sc->renderer, 0, 0, 0, alpha);
-        SDL_RenderFillRect(sc->renderer, nullptr);
-        SDL_RenderPresent(sc->renderer);
-        SDL_Delay(16);
-    }
+    (void)sc;
+    (void)frames;
+    /* No-op: the scene was already drawn and presented before this call.
+       Animated fade-from-black requires a render-target snapshot, which
+       we'll implement later. */
 }
 
 void CenterCelOnScreen(CCB *cel)

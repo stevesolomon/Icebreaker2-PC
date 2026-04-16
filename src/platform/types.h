@@ -14,6 +14,9 @@
 #include <cstring>
 #include <cstdio>
 
+#ifndef SDL_MAIN_HANDLED
+#define SDL_MAIN_HANDLED
+#endif
 #include <SDL.h>
 
 /* ── Integer types (replace 3DO types.h) ─────────────────────────────────── */
@@ -83,5 +86,11 @@ struct Bitmap {
 
 /* ── VDL / Display stub ──────────────────────────────────────────────────── */
 typedef int32_t VDLEntry;
+
+/* ── 3DO timeval (microsecond timer — NOT the POSIX timeval) ─────────────── */
+struct timeval {
+    int32 tv_sec;
+    int32 tv_usec;
+};
 
 #endif /* PLATFORM_TYPES_H */

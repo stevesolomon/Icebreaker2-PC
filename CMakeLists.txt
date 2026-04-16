@@ -93,7 +93,7 @@ set(GAME_HEADERS
 )
 
 # ── Main executable ──────────────────────────────────────────────────────────
-add_executable(${PROJECT_NAME} WIN32
+add_executable(${PROJECT_NAME}
     ${PLATFORM_SOURCES}
     ${PLATFORM_HEADERS}
     ${ASSET_SOURCES}
@@ -119,7 +119,6 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 
 # ── Link SDL2 libraries ─────────────────────────────────────────────────────
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>
     $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
     $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>
     $<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>

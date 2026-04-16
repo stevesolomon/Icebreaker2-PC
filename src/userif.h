@@ -101,7 +101,7 @@
 
 #define NOT_AVAILABLE_CEL			"$boot/IceSamplerData/MetaArt/NotAvailable.cel"
 
-#define FONTFILENAME"assets/MetaArt/Helvetica.ttf"	
+#define FONTFILENAME "assets/MetaArt/Helvetica.ttf"
 #define FONT_HEIGHT_ALLOWANCE 	15
 #define FONT_LEFT_MARGIN			25
 #define FONT_TOP_MARGIN				11

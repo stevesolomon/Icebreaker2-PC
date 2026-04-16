@@ -18,6 +18,8 @@
 #define CHUNK_CCB   0x43434220   /* 'CCB ' */
 #define CHUNK_PDAT  0x50444154   /* 'PDAT' */
 #define CHUNK_PLUT  0x504C5554   /* 'PLUT' */
+#define CHUNK_OFST  0x4F465354   /* 'OFST' — offset table (wrapper) */
+#define CHUNK_XTRA  0x58545241   /* 'XTRA' — extra data (skip) */
 
 /* ── 3DO CEL pixel formats ───────────────────────────────────────────────── */
 #define CEL_CODED_8     0   /* 8-bit indexed color with PLUT */

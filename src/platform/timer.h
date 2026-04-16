@@ -9,17 +9,8 @@
 #include <SDL.h>
 
 /* ── timeval replacement ─────────────────────────────────────────────────── */
-struct PlatformTimeval {
-    int32 tv_sec;
-    int32 tv_usec;
-};
-
-/* Map the 3DO "struct timeval" name to our replacement.
-   Avoid conflict with system timeval on platforms that define it. */
-#ifndef _3DO_TIMEVAL_COMPAT
-#define _3DO_TIMEVAL_COMPAT
-typedef PlatformTimeval timeval;
-#endif
+/* The struct timeval is defined in platform/types.h to avoid conflicts. */
+typedef struct timeval PlatformTimeval;
 
 /* ── Timer API ───────────────────────────────────────────────────────────── */
 

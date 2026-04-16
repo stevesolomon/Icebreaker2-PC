@@ -116,7 +116,7 @@ extern ScreenContext g_screen;
 extern int32         g_total_pyramids;
 extern bool				g_art_usage[TOTAL_ART_ELEMENTS];
 extern int32			level_lookup_table [ROWS_IN_LANDSCAPE] [COLUMNS_IN_LANDSCAPE];
-extern struct 			timeval current_time;
+extern timeval current_time;
 extern seeker			enemies;
 extern landscape 		pavement;
 
