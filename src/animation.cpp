@@ -30,7 +30,6 @@ therefore be deallocated when no longer needed) thus causing an application to g
 only as much memory as it really requires.
 *****************************************************************************************/
 #include "platform/platform.h"
-#include "platform/timer.h"
 #include "assets/anim_loader.h"
 
 /***** Magnet includes *****/
@@ -138,8 +137,7 @@ several anim_users are playing the animation at once.
 void anim_user::AdvanceFrame(void)
 {
 	anim_source_pointer->anim_pointer->cur_Frame = current_frame_number;
-	int32 scaled_rate = ScaleByDT(anim_frame_rate);
-	next_frame_ccb = GetAnimCel(anim_source_pointer->anim_pointer, scaled_rate);
+	next_frame_ccb = GetAnimCel(anim_source_pointer->anim_pointer, anim_frame_rate);
 	current_frame_number = anim_source_pointer->anim_pointer->cur_Frame;
 	current_frame_ccb->ccb_SourcePtr = next_frame_ccb->ccb_SourcePtr;
 	current_frame_ccb->ccb_PLUTPtr   = next_frame_ccb->ccb_PLUTPtr;

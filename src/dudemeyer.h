@@ -68,8 +68,8 @@ class dudemeyer
 		anim_user	 dudemeyer_shooting[8];
 		int32 		 col_detect_x[8];
 		int32 		 col_detect_y[8];
-		float			 ice_delay_x;
-		float			 ice_delay_y;
+		int32			 ice_delay_x;
+		int32			 ice_delay_y;
 		
 	public:
 		anim_source	 dudemeyer_deaths[8];

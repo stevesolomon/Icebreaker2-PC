@@ -22,7 +22,6 @@ destroyed, a new one replaces it, until such time as all other pyramids are elim
 At that point, the seekers can be permanently eliminated. 
 *****************************************************************************************/
 #include "platform/platform.h"
-#include "platform/timer.h"
 #include "assets/anim_loader.h"
 
 /***** Magnet includes *****/
@@ -1393,14 +1392,6 @@ void seeker::AnimateSeekers(int32 x_change, int32 y_change)
 	{
 		//DumpMovementStatus(target);
 		next_target = target->next;
-
-		/* Temporarily scale seeker speeds by delta-time for framerate independence.
-		   Restore original speeds at the end of each seeker's processing. */
-		int32 saved_horz_speed = target->horz_speed;
-		int32 saved_vert_speed = target->vert_speed;
-		target->horz_speed = ScaleByDT(target->horz_speed);
-		target->vert_speed = ScaleByDT(target->vert_speed);
-
 		old_x = target->walk_anim[target->direction].current_frame_ccb->ccb_XPos;
 		old_y = target->walk_anim[target->direction].current_frame_ccb->ccb_YPos;
 		/* If we have a pointer to an object that was blocking us, check to make sure   */
@@ -1501,7 +1492,7 @@ void seeker::AnimateSeekers(int32 x_change, int32 y_change)
 				}
 				else
 				{
-					target->immobile_counter += g_dt_seconds * BASE_GAME_FPS;
+					target->immobile_counter++;
 					/* Even though we aren't moving, keeping playing animation until       */
 					/* re-cued so that it doesn't stop on a frame that looks dumb. On the  */
 					/* other hand, some seekers never really stop, so keep animating them. */
@@ -1559,7 +1550,7 @@ void seeker::AnimateSeekers(int32 x_change, int32 y_change)
 			                                      current_frame_ccb->ccb_XPos)
 			                         && (old_y == target->walk_anim[target->direction].
 											              current_frame_ccb->ccb_YPos))
-												target->stranded_counter += g_dt_seconds * BASE_GAME_FPS;
+												target->stranded_counter++;
 											else
 												target->stranded_counter = 0;
 											break;
@@ -1585,11 +1576,6 @@ void seeker::AnimateSeekers(int32 x_change, int32 y_change)
 											break;
 			default:						printf("hey");
 		}
-
-		/* Restore original speeds after this seeker's processing */
-		target->horz_speed = saved_horz_speed;
-		target->vert_speed = saved_vert_speed;
-
 		target = next_target;
 	}
 }
