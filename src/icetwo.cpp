@@ -368,8 +368,7 @@ bool Init3D0System (void)
 void PreGameMenu()
 {
 	ControlPadEventData	data;
-	Item 						program;
-	int32						current_selection,i;
+	int32						current_selection;
 	CCB						*menu;
 	CCB						*pointer;
 
@@ -409,47 +408,20 @@ void PreGameMenu()
 	   if ((!(supress_repeats)) && (action & ControlA))
 		{
 			supress_repeats = 10;
-			g_screen.sc_curScreen = 1 - g_screen.sc_curScreen;
-			DrawScreenCels(g_screen.sc_Screens[g_screen.sc_curScreen],black_background);
-			DisplayScreen(g_screen.sc_Screens[g_screen.sc_curScreen],0);
-			UnloadCel(menu);
-			UnloadCel(pointer);
 			if (current_selection == 0)
+			{
+				g_screen.sc_curScreen = 1 - g_screen.sc_curScreen;
+				DrawScreenCels(g_screen.sc_Screens[g_screen.sc_curScreen],black_background);
+				DisplayScreen(g_screen.sc_Screens[g_screen.sc_curScreen],0);
+				UnloadCel(menu);
+				UnloadCel(pointer);
 				return;
-			UnloadCel(black_background);
-			CloseGraphics(&g_screen);
-			ScavengeMem();
-			/* discard stale user data (if any) */
-			while (data.cped_ButtonBits != 0)
-				GetControlPad (1,FALSE,&data);
-			action = 0;
-			switch (current_selection)
-			{		
-				case 1:	program = LoadProgram("protoice");	break;
-				case 2:	program = LoadProgram("rubik");		break;
-				case 3:	program = LoadProgram("rps");			break;
-				case 4:	program = LoadProgram("astro");		break;
-				case 5:	program = LoadProgram("eye");			break;
-				case 6:	program = LoadProgram("murphy");		break;
-				case 7:	program = LoadProgram("xmurphy");	break;
-				case 8:	program = LoadProgram("ysubss");		break;
-				case 9:	program = LoadProgram("betterecho");break;
-				case 10:	program = LoadProgram("icess");		break;
-				case 11:	program = LoadProgram("cmdeck");		break;
-				case 12:	program = LoadProgram("ouija");		break;
 			}
-		
-			while((CheckItem(program,KERNELNODE,TASKNODE)) != NULL)
-				WaitVBL (vbl, 10);
-			OpenGraphics(&g_screen,2);
-			black_background = LoadCel(BACKGROUND_IMAGE,MEMTYPE_CEL);
-			menu = LoadCel("$boot/AndyArt/menu.cel",MEMTYPE_CEL);
-			pointer = LoadCel("$boot/AndyArt/menupointer.cel",MEMTYPE_CEL);
-			CenterCelOnScreen(menu);
-			/* discard stale user data (if any) */
-			for (i = 0; i < 10; i++)
-				GetControlPad (1,FALSE,&data);
-			action = 0;
+
+			/* The other menu items were separate 3DO programs shipped on the
+			   original disc.  They are not available in the PC port. */
+			printf("Menu item %ld not available in PC version.\n",
+			       current_selection);
 		}
 
 		RegulateSpeed(FRAME_RATE_15_PER_SECOND);

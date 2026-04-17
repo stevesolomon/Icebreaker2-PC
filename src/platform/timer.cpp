@@ -23,8 +23,10 @@ uint64_t GetMicroseconds(void)
 void WaitVBL(int32 ioreq, int32 count)
 {
     (void)ioreq;
-    (void)count;
-    SDL_Delay(1);
+    /* On the 3DO, one VBL ≈ 1/60 sec (~16.7 ms).
+     * Approximate by sleeping count × 17 ms. */
+    if (count < 1) count = 1;
+    SDL_Delay(static_cast<uint32_t>(count) * 17);
 }
 
 int32 GetVBLIOReq(void)

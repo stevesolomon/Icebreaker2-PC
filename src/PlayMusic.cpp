@@ -32,25 +32,25 @@ static bool           g_music_initialized = false;
  * Index 0 is unused; track IDs are 1-based (QUACK=1 .. ICE_OPEN_MUSIC=19). */
 static const char *g_track_files[] = {
     nullptr,                        /*  0 - unused              */
-    "assets/Music/track01.wav",     /*  1 - QUACK               */
-    "assets/Music/track02.wav",     /*  2 - CHECK_THIS_OUT_TALK */
-    "assets/Music/track03.wav",     /*  3 - MADONNA             */
-    "assets/Music/track04.wav",     /*  4 - SPACE_AGE           */
-    "assets/Music/track05.wav",     /*  5 - SOUND_OF_TALK       */
-    "assets/Music/track06.wav",     /*  6 - LOTS_OF_PERC        */
-    "assets/Music/track07.wav",     /*  7 - DRUNK_TRUMPET       */
-    "assets/Music/track08.wav",     /*  8 - MONKEY              */
-    "assets/Music/track09.wav",     /*  9 - THE_LONGER_ONE      */
-    "assets/Music/track10.wav",     /* 10 - MORE_QUACK          */
-    "assets/Music/track11.wav",     /* 11 - SEVENTIES2          */
-    "assets/Music/track12.wav",     /* 12 - SHAFT               */
-    "assets/Music/track13.wav",     /* 13 - HIT_ME              */
-    "assets/Music/track14.wav",     /* 14 - WATER_WORKS         */
-    "assets/Music/track15.wav",     /* 15 - FAST_HUNT           */
-    "assets/Music/track16.wav",     /* 16 - G_BOUNCE            */
-    "assets/Music/track17.wav",     /* 17 - SCHICK              */
-    "assets/Music/track18.wav",     /* 18 - BALI                */
-    "assets/Music/track19.wav",     /* 19 - ICE_OPEN_MUSIC      */
+    "assets/Music/track01.ogg",     /*  1 - QUACK               */
+    "assets/Music/track02.ogg",     /*  2 - CHECK_THIS_OUT_TALK */
+    "assets/Music/track03.ogg",     /*  3 - MADONNA             */
+    "assets/Music/track04.ogg",     /*  4 - SPACE_AGE           */
+    "assets/Music/track05.ogg",     /*  5 - SOUND_OF_TALK       */
+    "assets/Music/track06.ogg",     /*  6 - LOTS_OF_PERC        */
+    "assets/Music/track07.ogg",     /*  7 - DRUNK_TRUMPET       */
+    "assets/Music/track08.ogg",     /*  8 - MONKEY              */
+    "assets/Music/track09.ogg",     /*  9 - THE_LONGER_ONE      */
+    "assets/Music/track10.ogg",     /* 10 - MORE_QUACK          */
+    "assets/Music/track11.ogg",     /* 11 - SEVENTIES2          */
+    "assets/Music/track12.ogg",     /* 12 - SHAFT               */
+    "assets/Music/track13.ogg",     /* 13 - HIT_ME              */
+    "assets/Music/track14.ogg",     /* 14 - WATER_WORKS         */
+    "assets/Music/track15.ogg",     /* 15 - FAST_HUNT           */
+    "assets/Music/track16.ogg",     /* 16 - G_BOUNCE            */
+    "assets/Music/track17.ogg",     /* 17 - SCHICK              */
+    "assets/Music/track18.ogg",     /* 18 - BALI                */
+    "assets/Music/track19.ogg",     /* 19 - ICE_OPEN_MUSIC      */
 };
 
 static const int g_num_track_files = sizeof(g_track_files) / sizeof(g_track_files[0]);
