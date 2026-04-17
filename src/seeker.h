@@ -297,8 +297,8 @@ typedef struct dude
 	int32				alternate_hazard_direction;
 	int32				move_status;
 	int32				move_counter;
-	int32				stranded_counter;
-	int32				immobile_counter;
+	float				stranded_counter;
+	float				immobile_counter;
 	int32				reversal_counter;
 	int32				previous_x;
 	int32				previous_y;

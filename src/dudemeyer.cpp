@@ -20,6 +20,7 @@ dudemeyer, so the global variables for this class include 8 pairs of collision
 detection numbers as well.
 *****************************************************************************************/
 #include "platform/platform.h"
+#include "platform/timer.h"
 #include "assets/anim_loader.h"
 
 /***** Magnet includes *****/
@@ -515,8 +516,8 @@ int32	x_skid, y_skid;
 			y_change -= vert_speed - (y_adjustment << 16);
 	   if (y_change < 0)
 			y_change += vert_speed - (y_adjustment << 16);
-		ice_delay_x++;
-		ice_delay_y++;
+		ice_delay_x += g_dt_seconds * BASE_GAME_FPS;
+		ice_delay_y += g_dt_seconds * BASE_GAME_FPS;
 		if ((ice_delay_x >= HORZ_SLIPPERYNESS) && (ice_delay_y >= VERT_SLIPPERYNESS))
 			ice_movement_state = FULL_THROTTLE;
 		return;
@@ -582,8 +583,8 @@ int32	x_skid, y_skid;
 		}
 		/********************* we now resume normal unchanged code ************************/
 
-		ice_delay_x++;
-		ice_delay_y++;
+		ice_delay_x += g_dt_seconds * BASE_GAME_FPS;
+		ice_delay_y += g_dt_seconds * BASE_GAME_FPS;
 		if ((x_change == 0) && (y_change == 0))
 		{
 			old_ice_direction = direction;
@@ -638,10 +639,10 @@ int32	x_skid, y_skid;
 			y_change = (y_skid + y_adjustment) << 16;
 		}
 	
-		if (ice_delay_x)
-			ice_delay_x--;
-		if (ice_delay_y)
-			ice_delay_y--;
+		if (ice_delay_x > 0)
+			ice_delay_x -= g_dt_seconds * BASE_GAME_FPS;
+		if (ice_delay_y > 0)
+			ice_delay_y -= g_dt_seconds * BASE_GAME_FPS;
 		if ((ice_delay_x <= 0) && (ice_delay_y <= 0))
 		{
 			old_ice_direction = direction;

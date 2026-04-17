@@ -20,6 +20,7 @@ can be in are:
    BULLET_EXPLODING: The bullet has struck a target
 *****************************************************************************************/
 #include "platform/platform.h"
+#include "platform/timer.h"
 #include "assets/anim_loader.h"
 
 /***** magnet includes *****/
@@ -749,11 +750,13 @@ void  weapon::MoveABullet (bullet *shot, int32 x_change, int32 y_change)
 {
 	int32 j;
 	int32 diagonal_y;
+	int32 scaled_speed = ScaleByDT(speed << 16) >> 16;
+	if (scaled_speed < step_size) scaled_speed = step_size;
 
 	diagonal_y = ((step_size * 2) / 3) << 16;
 	shot->bullet_anim.current_frame_ccb->ccb_XPos += x_change;
 	shot->bullet_anim.current_frame_ccb->ccb_YPos += y_change;
-	for (j = step_size; j <= speed; j += step_size)
+	for (j = step_size; j <= scaled_speed; j += step_size)
 	{
 		switch (shot->direction)
 		{
