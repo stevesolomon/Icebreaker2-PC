@@ -13,8 +13,9 @@
 #include "platform/platform.h"
 #include "FontHandler.h"
 
-/* Default font size in points — matches the original 3DO bitmap font height */
-static const int DEFAULT_FONT_SIZE = 16;
+/* Default font size in points — tuned to approximate the original 3DO bitmap font
+ * height (~13px) at 320×240 native resolution. */
+static const int DEFAULT_FONT_SIZE = 10;
 
 /******************************************************************************/
 /*                  C_FontHandler Class methods start below:                   */
@@ -79,6 +80,10 @@ int C_FontHandler::CreateCelFromFont(char *fontFileName)
             printf("ERROR - TTF_OpenFont() failed: %s\n", TTF_GetError());
             return -1;
         }
+
+        /* The original 3DO Helvetica bitmap font was bold weight.
+         * Our TTF is "55 Roman" (regular), so apply synthetic bold. */
+        TTF_SetFontStyle(gFont, TTF_STYLE_BOLD);
 
         numTextCels++;
         return 1;
@@ -151,11 +156,15 @@ CCB *C_FontHandler::RenderTextToCel(char *textContent, SDL_Color fgColor,
         gTextCels[idx].surface = nullptr;
     }
 
-    /* Render the text to an SDL_Surface (shaded = fg on solid bg) */
-    SDL_Surface *surface = TTF_RenderText_Shaded(gFont, textContent, fgColor, bgColor);
+    /* Render the text to an SDL_Surface with transparent background.
+     * On the 3DO, background color 0 (MakeRGB15(0,0,0)) was transparent since
+     * pixel value 0x0000 was the CEL transparency key. TTF_RenderText_Blended
+     * gives us anti-aliased text on a fully transparent RGBA surface. */
+    (void)bgColor; /* background is always transparent in blended mode */
+    SDL_Surface *surface = TTF_RenderText_Blended(gFont, textContent, fgColor);
     if (!surface)
     {
-        printf("ERROR - TTF_RenderText_Shaded() failed: %s\n", TTF_GetError());
+        printf("ERROR - TTF_RenderText_Blended() failed: %s\n", TTF_GetError());
         return nullptr;
     }
 
@@ -173,6 +182,9 @@ CCB *C_FontHandler::RenderTextToCel(char *textContent, SDL_Color fgColor,
         SDL_FreeSurface(surface);
         return nullptr;
     }
+
+    /* Enable alpha blending so transparent background pixels show through */
+    SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
 
     /* Populate the CCB (Sprite) for this slot */
     gTextCels[idx].texture   = texture;
