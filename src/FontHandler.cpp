@@ -14,8 +14,16 @@
 #include "FontHandler.h"
 
 /* Default font size in points — tuned to approximate the original 3DO bitmap font
- * height (~13px) at 320×240 native resolution. */
+ * glyph size at 320×240 native resolution. */
 static const int DEFAULT_FONT_SIZE = 10;
+
+/* The original 3DO Helvetica.3do bitmap font had a 32-pixel character cell with
+ * significant internal leading above the glyphs.  The game's text Y-coordinates
+ * were calibrated for that extra top padding.  TTF fonts have very little leading
+ * so, without compensation, text appears several pixels too high.  This constant
+ * adds transparent padding at the top of every text surface to re-align with the
+ * pre-rendered labels baked into the background artwork. */
+static const int FONT_TOP_PADDING = 11;
 
 /******************************************************************************/
 /*                  C_FontHandler Class methods start below:                   */
@@ -161,11 +169,32 @@ CCB *C_FontHandler::RenderTextToCel(char *textContent, SDL_Color fgColor,
      * pixel value 0x0000 was the CEL transparency key. TTF_RenderText_Blended
      * gives us anti-aliased text on a fully transparent RGBA surface. */
     (void)bgColor; /* background is always transparent in blended mode */
-    SDL_Surface *surface = TTF_RenderText_Blended(gFont, textContent, fgColor);
-    if (!surface)
+    SDL_Surface *rawSurface = TTF_RenderText_Blended(gFont, textContent, fgColor);
+    if (!rawSurface)
     {
         printf("ERROR - TTF_RenderText_Blended() failed: %s\n", TTF_GetError());
         return nullptr;
+    }
+
+    /* Add top-padding to match the original 3DO bitmap font's internal leading.
+     * The game positions text by the top of the cel; the original font had extra
+     * space above the glyphs that our TTF font lacks.  We create a taller surface
+     * with the text placed FONT_TOP_PADDING pixels from the top. */
+    SDL_Surface *surface = SDL_CreateRGBSurfaceWithFormat(
+        0, rawSurface->w, rawSurface->h + FONT_TOP_PADDING,
+        32, SDL_PIXELFORMAT_RGBA32);
+    if (surface)
+    {
+        SDL_FillRect(surface, nullptr, 0); /* clear to fully transparent */
+        SDL_SetSurfaceBlendMode(rawSurface, SDL_BLENDMODE_NONE);
+        SDL_Rect dstRect = { 0, FONT_TOP_PADDING, rawSurface->w, rawSurface->h };
+        SDL_BlitSurface(rawSurface, nullptr, surface, &dstRect);
+        SDL_FreeSurface(rawSurface);
+    }
+    else
+    {
+        /* Fallback: use the raw surface if padding allocation fails */
+        surface = rawSurface;
     }
 
     /* Create a GPU texture from the surface */
