@@ -1141,7 +1141,9 @@ int32 DisplayLevelsCompletedScreen(void)
 	if (level > GetCurrentPackMaxLevel())
 		level = GetCurrentPackMaxLevel();
 	
-	level_grid_cel = LoadCel(LEVEL_GRID,   MEMTYPE_CEL);
+	level_grid_cel = LoadCel(
+		(GetCurrentPack() == PACK_IB1_CLASSIC) ? LEVEL_GRID_IB1 : LEVEL_GRID,
+		MEMTYPE_CEL);
 	easy_box_cel   = LoadCel(EASY_BOX, 	   MEMTYPE_CEL);
 	medium_box_cel = LoadCel(MEDIUM_BOX,   MEMTYPE_CEL);
 	hard_box_cel   = LoadCel(HARD_BOX, 	   MEMTYPE_CEL);
@@ -1273,6 +1275,9 @@ int32 DisplayLevelsCompletedScreen(void)
 					PlaySoundEffect(PING_SOUND);
 					SetCurrentPack(PACK_IB1_CLASSIC);
 					level = 1;
+					UnloadCel(level_grid_cel);
+					level_grid_cel = LoadCel(LEVEL_GRID_IB1, MEMTYPE_CEL);
+					CenterCelOnScreen(level_grid_cel);
 				}
 				else if (only_l && GetCurrentPack() == PACK_IB1_CLASSIC)
 				{
@@ -1280,6 +1285,9 @@ int32 DisplayLevelsCompletedScreen(void)
 					PlaySoundEffect(PING_SOUND);
 					SetCurrentPack(PACK_IB2_MAIN);
 					level = 1;
+					UnloadCel(level_grid_cel);
+					level_grid_cel = LoadCel(LEVEL_GRID, MEMTYPE_CEL);
+					CenterCelOnScreen(level_grid_cel);
 				}
 			}
 		}

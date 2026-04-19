@@ -31,6 +31,7 @@
 #define OPTIONS_SOUND_OFF_CEL		"$boot/IceFiles/Menus/OptionsMenu/off.cel"
 
 #define LEVEL_GRID             	"$boot/IceFiles/Menus/levelgrid/chart2.cel"
+#define LEVEL_GRID_IB1         	"$boot/IceFiles/Menus/levelgrid/chart.cel"
 #define EASY_BOX               	"$boot/IceFiles/Menus/levelgrid/yellow.cel"
 #define MEDIUM_BOX             	"$boot/IceFiles/Menus/levelgrid/pink.cel"
 #define HARD_BOX               	"$boot/IceFiles/Menus/levelgrid/blue.cel"
