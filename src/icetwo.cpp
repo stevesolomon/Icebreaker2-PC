@@ -388,6 +388,8 @@ void PreGameMenu()
 	{
 		GetControlPad (1,FALSE,&data);
 		action = data.cped_ButtonBits;
+		if (action == 0)
+			supress_repeats = 0;
 		if (supress_repeats)
 			supress_repeats = TickDownTimer(supress_repeats);
 		if (action & ControlUp)
@@ -1242,6 +1244,8 @@ void InputHandler(int32 &x_change, int32 &y_change)
 
 	GetControlPad (1,FALSE,&data);
 	action = data.cped_ButtonBits;
+	if (action == 0)
+		supress_repeats = 0;
 	
 	if (supress_repeats)
 		supress_repeats = TickDownTimer(supress_repeats);

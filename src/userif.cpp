@@ -444,6 +444,8 @@ int32 MainMenuInterface(void)
 		action = data.cped_ButtonBits;
 		if (action != 0)
 			HasThisMuchTimePassedYet(0,TRUE);
+		else
+			supress_repeats = 0;
 		if (supress_repeats)
 			supress_repeats = TickDownTimer(supress_repeats);
 
@@ -761,6 +763,8 @@ int32 OptionsInterface(void)
 		action = data.cped_ButtonBits;
 		if (action != 0)
 			HasThisMuchTimePassedYet(0,TRUE);
+		else
+			supress_repeats = 0;
 		if (supress_repeats)
 			supress_repeats = TickDownTimer(supress_repeats);
 
@@ -1168,6 +1172,8 @@ int32 DisplayLevelsCompletedScreen(void)
 		action = data.cped_ButtonBits;
 		if (action != 0)
 			HasThisMuchTimePassedYet(0,TRUE);
+		else
+			supress_repeats = 0;
 		if (supress_repeats)
 			supress_repeats = TickDownTimer(supress_repeats);
 		ConstructLevelsCompletedScreen();
@@ -1605,6 +1611,8 @@ int32 SelectTutorial()
 
 		i = EXIT_THE_PROGRAM;
 		GetControlPad (1,FALSE,&data);
+		if (data.cped_ButtonBits == 0)
+			supress_repeats = 0;
 
 		if (!supress_repeats)
 		{
@@ -1828,6 +1836,8 @@ int32 ChangeSkillLevel()
 
 		i = EXIT_THE_PROGRAM;
 		GetControlPad (1,FALSE,&data);
+		if (data.cped_ButtonBits == 0)
+			supress_repeats = 0;
 
 		if (!supress_repeats)
 		{
@@ -1942,6 +1952,8 @@ int32 RollTheCredits()
 
 		i = 0;
 		GetControlPad (1,FALSE,&data);
+		if (data.cped_ButtonBits == 0)
+			supress_repeats = 0;
 
 		if (!(supress_repeats))
 		{
@@ -2088,6 +2100,8 @@ int32 PlayMoviesMenu()
 
 		i = EXIT_THE_PROGRAM;
 		GetControlPad (1,FALSE,&data);
+		if (data.cped_ButtonBits == 0)
+			supress_repeats = 0;
 
 		if (!(supress_repeats))
 		{
@@ -2306,6 +2320,8 @@ int32 MusicMenu()
 
 		i = EXIT_THE_PROGRAM;
 		GetControlPad (1,FALSE,&data);
+		if (data.cped_ButtonBits == 0)
+			supress_repeats = 0;
 
 		if (!supress_repeats)
 		{
