@@ -243,3 +243,108 @@ node tools/extract_movies.js [iso_assets/IceFiles/Music/ice.bigstream] [assets/M
 
 Produces 18 files `movie00_welcome.icm` … `movie17_victory.icm`. Total ≈ a few MB
 per clip thanks to Cinepak's ~10:1 compression.
+
+## Save File (NVRAM Replacement)
+
+The original 3DO stored progress in 32 KB battery-backed NVRAM under the virtual
+path `$boot/NVRAM/`. The PC port serialises the same C struct to a flat file using
+standard `fwrite`. Implementation lives in `src/nvram.cpp` / `src/nvram.h`.
+
+### Location
+
+```
+%APPDATA%\Icebreaker2\savegame.dat
+```
+e.g. `C:\Users\<you>\AppData\Roaming\Icebreaker2\savegame.dat`. The directory is
+auto-created on first write via `SHGetFolderPath(CSIDL_APPDATA)` →
+`GetSaveDir()` in `src/platform/filesystem.cpp`. Fallback if `SHGetFolderPath`
+fails: `.\saves\`.
+
+### Format
+
+Raw `fwrite` of one C struct — **no header, no version field, no checksum**:
+
+```c
+typedef struct status_file_format {
+    int16 developer_id;          // always 1365 (MAGNET_3D0_DEVELOPER_ID_NUMBER)
+    char  level_stats[76];       // 2 levels per byte, supports up to 152 levels
+    int32 difficulty_and_tracks; // packed difficulty + music-track mask
+} status_file_format;
+```
+
+On x64/MSVC this lays out as:
+
+| Offset | Size | Field |
+|--------|------|-------|
+| 0  | 2  | `developer_id` (LE, value `0x0555` = 1365) |
+| 2  | 76 | `level_stats[0..75]` |
+| 78 | 2  | padding (alignment) |
+| 80 | 4  | `difficulty_and_tracks` (LE) |
+
+**Total file size: 84 bytes.** Endianness is host-native (little-endian on PC,
+big-endian on the original 3DO) — saves are *not* binary-compatible across
+platforms.
+
+### `level_stats[]` — Completion Bitmap
+
+Each byte tracks **two** levels. The high nibble belongs to the *odd-indexed*
+level (1, 3, 5, …); the low nibble to the *even-indexed* level (2, 4, 6, …):
+
+```
+Bit  Difficulty
+0x01 / 0x10   EASY
+0x02 / 0x20   MEDIUM
+0x04 / 0x40   HARD
+0x08 / 0x80   INSANE
+```
+
+Example: `level_stats[0] = 0x42` ⇒ level 1 beaten on HARD, level 2 beaten on
+MEDIUM. `stat_file.level_stats[i] & 0xF0` is "level (2i+1) ever completed?";
+`& 0x0F` is "level (2i+2) ever completed?". `MAX_LEVEL_STAT_ELEMENTS = 76`
+provides room for 152 level slots, comfortably above Icebreaker 2's 150.
+
+### `difficulty_and_tracks` — Packed Settings Word
+
+A single 32-bit word doing double duty:
+
+```
+bits  0..17   tracks bitmask (1 bit per music track; 0x3FFFF = all 18 enabled)
+bits 18..19   reserved
+bits 20..23   skill level, one-hot:
+                0x100000 = EASY
+                0x200000 = MEDIUM
+                0x400000 = HARD
+                0x800000 = INSANE
+bits 24..31   reserved (zero)
+```
+
+On read, `tracks = stat_file.difficulty_and_tracks & 0x3FFFF`; if `tracks` is
+anything other than the all-on default `0x3FFFF`, the global
+`standard_musical_selections` flag is set to `FALSE` so the player's custom
+playlist is honoured.
+
+### Lifecycle
+
+| Function | When called | Effect |
+|----------|-------------|--------|
+| `ReadStatusFile()` | Once at startup | Loads file; populates `tracks` and `g_skill_level`. If missing: defaults to all tracks on (`0x3FFFF`) and HARD difficulty, but does **not** create the file. |
+| `WriteStatusFile()` | Whenever difficulty or music-track selection changes | Read-modify-write: re-loads (or initialises a blank record), repacks `difficulty_and_tracks`, writes back. |
+| `SetLevelFlagInStatusRecordFile(level, mode)` | After completing any level | Read-modify-write: sets the bit for that (level, difficulty) pair, writes back. Also triggers victory-movie playback when all 30 or all 150 levels are first cleared. |
+| `CheckForVictory(level, count)` | Before recording a completion | Counts unfinished levels in the first `count` entries; returns true if the level being recorded is the very last one missing. |
+| `DeleteStatusFile()` | Reset-progress menu option | `remove()`s the file and zeros the in-memory struct. |
+| `FakeCompletion(first, last)` | Debug only | Marks a range of levels complete at random difficulties. |
+| `DumpStatusRecordFile()` | Debug only | Pretty-prints the bitmap to stdout. |
+
+### Quirks Worth Remembering
+
+- **No versioning.** If the struct layout ever changes, old saves silently load
+  wrong values. The only sanity check is `developer_id == 1365`, and even that
+  only emits a warning from `DumpStatusRecordFile`.
+- **Read-modify-write everywhere.** Every mutation re-loads the whole file
+  before writing it back. Concurrent runs of the game would lose updates.
+- **Endianness/packing tied to host.** A save written on this Windows port is
+  not binary-compatible with the original 3DO NVRAM image.
+- **`developer_id` is set on first creation only.** `ReadStatusFile` does not
+  re-stamp it, so a corrupt or alien file won't be auto-healed.
+- **Levels are 1-indexed in the API.** `(level - 1) / 2` is the byte index;
+  `(level - 1) % 2` chooses the nibble.
