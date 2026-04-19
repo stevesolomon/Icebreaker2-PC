@@ -1132,6 +1132,22 @@ int32 DisplayLevelsCompletedScreen(void)
 	hard_box_cel   = LoadCel(HARD_BOX, 	   MEMTYPE_CEL);
 	insane_box_cel = LoadCel(INSANE_BOX, 	MEMTYPE_CEL);
 	highlight_cel  = LoadCel(HIGHLIGHT_BOX,MEMTYPE_CEL);
+
+	/* Render the difficulty-completion boxes at 50% opacity so the level
+	   number painted into the underlying grid stays readable through the
+	   coloured fill.  PIXC 0x0581 = 50/50 source/dest blend; the SDL
+	   renderer's PixcToAlpha maps this to alpha=128. */
+	{
+		CCB *boxes[] = { easy_box_cel, medium_box_cel, hard_box_cel, insane_box_cel };
+		for (int b = 0; b < 4; b++)
+		{
+			if (!boxes[b]) continue;
+			boxes[b]->ccb_Flags &= ~CCB_POVER_MASK;
+			boxes[b]->ccb_Flags |= PMODE_ONE;
+			boxes[b]->ccb_PIXC   = (0x0581 << 16) | (boxes[b]->ccb_PIXC & 0xFFFF);
+			boxes[b]->ccb_Height += 1;
+		}
+	}
 	switch (g_skill_level)
 	{
 		case EASY:		check_cel = LoadCel(GRID_MARK_EASY,   MEMTYPE_CEL);	break;
