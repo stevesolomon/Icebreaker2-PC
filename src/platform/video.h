@@ -201,9 +201,8 @@ static inline int MoviePlay(MoviePlayer *mp, SDL_Renderer *renderer)
     double frame_duration = audio_duration / mp->header.frame_count;
     if (frame_duration < 0.01) frame_duration = 1.0 / 15.0;
 
-    /* Get renderer output size for scaling */
-    int rend_w, rend_h;
-    SDL_GetRendererOutputSize(renderer, &rend_w, &rend_h);
+    /* Use logical size (320x240) since the game sets SDL_RenderSetLogicalSize */
+    int rend_w = 320, rend_h = 240;
 
     /* Scale to fit while maintaining aspect ratio */
     float scale_x = (float)rend_w / mp->header.width;
