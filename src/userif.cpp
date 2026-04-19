@@ -1189,11 +1189,11 @@ int32 DisplayLevelsCompletedScreen(void)
 //				FakeCompletion(32,150);
 //			}
 #endif
-			supress_repeats = FramesToMillis(2);
 			if ((action & ControlStart) || (action & ControlX) || (action & ControlA))
 				time_to_go = TRUE;
 			if (action & ControlUp)
 			{
+				supress_repeats = FramesToMillis(2);
 				PlaySoundEffect(PING_SOUND);
 				level -= 15;
 				if (level < 1)
@@ -1201,6 +1201,7 @@ int32 DisplayLevelsCompletedScreen(void)
 			}
 			if (action & ControlDown)
 			{
+				supress_repeats = FramesToMillis(2);
 				PlaySoundEffect(PING_SOUND);
 				level += 15;
 				if (level > 150)
@@ -1208,6 +1209,7 @@ int32 DisplayLevelsCompletedScreen(void)
 			}
 			if (action & ControlRight)
 			{
+				supress_repeats = FramesToMillis(2);
 				PlaySoundEffect(PING_SOUND);
 				level++;
 				if (level > 150)
@@ -1215,6 +1217,7 @@ int32 DisplayLevelsCompletedScreen(void)
 			}
 			if (action & ControlLeft)
 			{
+				supress_repeats = FramesToMillis(2);
 				PlaySoundEffect(PING_SOUND);
 				level--;
 				if (level < 1)
