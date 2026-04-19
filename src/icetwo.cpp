@@ -2240,9 +2240,11 @@ int32 PlayALevel(int32 whats_next)
 			FadeFromBlack(&g_screen, 40);
 			faded = FALSE;
 		
-			/* discard early user data (if any) */
-			for (i = 0; i < 10; i++)
+			/* wait for all buttons to be released before starting */
+			do {
 				GetControlPad (1,FALSE,&data);
+				UpdateDeltaTime();
+			} while (data.cped_ButtonBits != 0);
 		
 			/***** main program loop *****/
 			while (FOREVER)
