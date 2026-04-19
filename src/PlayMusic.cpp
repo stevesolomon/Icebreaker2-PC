@@ -250,17 +250,51 @@ void initSoundStream(void)
 }
 
 /********************  PlayVideoStream  *************************************************
-   Plays a cutscene video.  The original used Cinepak video from the DataStream.
-   This is stubbed for now — video playback will need a separate porting effort
-   (e.g., SDL + FFmpeg or a lightweight video library).
-   Returns 0 (not interrupted).
+   Plays a cutscene video extracted from the 3DO DataStream.
+   Loads the corresponding .icm file and plays it using the built-in Cinepak decoder.
+   Returns 0 if played to completion, non-zero if user interrupted.
 ******************************************************************************************/
+
+#include "platform/video.h"
+
+static const char *movie_filenames[] = {
+    "assets/Movies/movie00_welcome.icm",
+    "assets/Movies/movie01_pits.icm",
+    "assets/Movies/movie02_purple.icm",
+    "assets/Movies/movie03_pink.icm",
+    "assets/Movies/movie04_rainbow.icm",
+    "assets/Movies/movie05_cyanide.icm",
+    "assets/Movies/movie06_ice.icm",
+    "assets/Movies/movie07_limeys.icm",
+    "assets/Movies/movie08_rocks.icm",
+    "assets/Movies/movie09_concrete.icm",
+    "assets/Movies/movie10_lava.icm",
+    "assets/Movies/movie11_chameleon.icm",
+    "assets/Movies/movie12_slime.icm",
+    "assets/Movies/movie13_lurkers.icm",
+    "assets/Movies/movie14_swamp.icm",
+    "assets/Movies/movie15_zombie.icm",
+    "assets/Movies/movie16_meany.icm",
+    "assets/Movies/movie17_victory.icm",
+};
 
 int32 PlayVideoStream(int position)
 {
-    (void)position;
-    SDL_Log("PlayVideoStream(%d): video playback not yet implemented", position);
-    return 0;
+    if (position < 0 || position > 17) {
+        SDL_Log("PlayVideoStream(%d): invalid movie index", position);
+        return 0;
+    }
+
+    MoviePlayer mp;
+    if (!MovieLoad(&mp, movie_filenames[position])) {
+        return 0;
+    }
+
+    SDL_Renderer *renderer = GetRenderer();
+    int result = MoviePlay(&mp, renderer);
+    MovieFree(&mp);
+
+    return result;
 }
 
 /***********************************  DismantlePlayer  ***********************************
