@@ -1333,6 +1333,11 @@ void InputHandler(int32 &x_change, int32 &y_change)
 			operating_mode = GAME_ABORT;
 			game_paused = FALSE;
 		}
+		if ((action & ControlRightShift) && (action & ControlLeftShift))
+		{
+			ScreenSaver();
+			game_paused = FALSE;
+		}
 	}
 	
 	if (game_paused)
