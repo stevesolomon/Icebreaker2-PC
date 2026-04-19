@@ -66,6 +66,7 @@ bool	         		pac_mid,easter_lurker;
 CCB						*lost_arrow;
 bool						game_paused;
 int32          		original_pyramids;
+bool                level_started_with_seekers;
 bool          			random_changes;
 uint32	 		     	action;
 bool	 					on_slippery_ice;
@@ -554,6 +555,7 @@ void InitializeIcebreaker(int32 leveltoload, int16 difficulty)
 	fireball.InitializeWeapon();
 
 	original_pyramids = g_total_pyramids;
+	level_started_with_seekers = (enemies.seeker_list != (dude *) NULL);
 	g_screen.sc_curScreen = 0;		
 	supress_repeats = 0;
 	on_slippery_ice = FALSE;
@@ -2264,8 +2266,18 @@ int32 PlayALevel(int32 whats_next)
 					GameOver(TRUE);
 					break;
 				}
-				if (enemies.seeker_list == (dude *) NULL)
+				if ((enemies.seeker_list == (dude *) NULL) && level_started_with_seekers)
 				{
+					GameOver(FALSE);
+					break;
+				}
+				if (g_total_pyramids == 0)
+				{
+					/* Pyramid-clearing victory: also a valid level-cleared
+					   condition.  Needed for IB2 levels (e.g. 47, 51) whose
+					   data files have an extra '*' separator that leaves
+					   EASY mode with zero seekers; without this the level
+					   would either never end or end immediately. */
 					GameOver(FALSE);
 					break;
 				}
@@ -2283,14 +2295,18 @@ int32 PlayALevel(int32 whats_next)
 		ShutdownForRestart();
 		total_games++;
 		STOP_THE_MUSIC;
-		if (enemies.seeker_list == (dude *) NULL)
 		{
-			printf("Level cleared!\n");
-			if ((lives_per_level == 1) && (operating_mode == PICK_AND_PLAY_MODE))
-				SetLevelFlagInStatusRecordFile(level,g_skill_level);
+			bool cleared = (!g_dead) && ((enemies.seeker_list == (dude *) NULL)
+			                            || (g_total_pyramids == 0));
+			if (cleared)
+			{
+				printf("Level cleared!\n");
+				if ((lives_per_level == 1) && (operating_mode == PICK_AND_PLAY_MODE))
+					SetLevelFlagInStatusRecordFile(level,g_skill_level);
+			}
+			else
+				printf ("Pyramids left: %ld.\n", g_total_pyramids);
 		}
-		else
-			printf ("Pyramids left: %ld.\n", g_total_pyramids);
 
 #ifdef FLIGHT_RECORDER_ON
 		DumpBlackBox();

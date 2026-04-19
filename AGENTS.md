@@ -1,22 +1,59 @@
 # Agent instructions for the 3do-icebreaker2 repository
 
+## Reference source trees and original assets
+
+When investigating ports, parser quirks, or legacy game logic, you have full
+access to all four reference trees on this machine:
+
+| Purpose                              | Path                                                                 |
+| ------------------------------------ | -------------------------------------------------------------------- |
+| **IB1 source code** (3DO original)   | `E:\Programming Projects\3do-icebreaker-master`                      |
+| **IB1 assets** (unpacked ISO)        | `E:\Programming Projects\icebreaker_iso\Icebreaker.bin.unpacked`     |
+| **IB2 source code** (this repo/port) | `E:\Programming Projects\3do-icebreaker2`                            |
+| **IB2 assets** (unpacked ISO)        | `E:\Programming Projects\3do-icebreaker2\iso_assets`                 |
+
+Use these to:
+
+- Verify whether a "bug" exists in the original asset files vs is a
+  porting/transcription artifact (e.g., compare `iso_assets/IceFiles/...`
+  with `assets/...`).
+- Cross-reference original 3DO C++ logic against the ported version.
+- Recover or re-extract assets if the working `assets/` copy gets corrupted.
+
 ## Always rebuild after code changes
 
-Whenever you modify any C/C++ source or header in `src/` (or change anything
-that affects the build, such as `CMakeLists.txt`), you MUST rebuild the
-binary before declaring the task complete. The user runs `Icebreaker2.exe`
-themselves to test, so a stale exe leads to confusing bad states.
+Whenever you modify **anything** that could affect what the user runs —
+C/C++ source, headers, `CMakeLists.txt`, OR any file under `assets/` — you
+MUST run the build step before declaring the task complete. No exceptions,
+even if you "only" touched data files. The user runs `Icebreaker2.exe`
+themselves to test, so a stale exe or stale `build/assets/` copy leads to
+confusing bad states and wasted user time.
 
-Build command (Windows, MSVC):
+Run BOTH of the following after every change, in order:
+
+1. **Build the binary** (rebuilds the exe AND triggers the POST_BUILD asset
+   copy if the target relinks):
 
 ```powershell
 cmd /c "cd /d ""E:\Programming Projects\3do-icebreaker2"" && ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat"" -arch=amd64 >nul && ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"" --build build 2>&1"
 ```
 
-After building, verify `build\Icebreaker2.exe`'s `LastWriteTime` is newer
-than the latest source file you touched. If a build fails, fix it before
-declaring the task complete — never hand the user a broken binary or a
-stale binary.
+2. **Force-sync assets** (the POST_BUILD copy is skipped when ninja reports
+   "no work to do", which happens for asset-only changes):
+
+```powershell
+cmd /c """C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"" -E copy_directory ""E:\Programming Projects\3do-icebreaker2\assets"" ""E:\Programming Projects\3do-icebreaker2\build\assets"""
+```
+
+After both steps:
+
+- Verify `build\Icebreaker2.exe`'s `LastWriteTime` is newer than the latest
+  source file you touched.
+- For any asset you edited, verify the file size or mtime under
+  `build\assets\...` matches the source under `assets\...`.
+
+If a build fails, fix it before declaring the task complete — never hand
+the user a broken binary or a stale binary or stale assets.
 
 ## Task completion sound
 
