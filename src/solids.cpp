@@ -1416,6 +1416,7 @@ void  solids::CreateAnimatedSolid (anim_source *original, int32 frame_rate,
 	new_anisolid->solids_entry = solids_entry;
 	new_anisolid->solid_anim.Restart();
 	new_anisolid->special = 0;
+	new_anisolid->special_accum = 0.0f;
 	new_anisolid->next = anisolid_list;
 	anisolid_list = new_anisolid;
 
@@ -1543,7 +1544,11 @@ void  solids::MaintainAnimatedObjects(void)
 				if ((traversal_ptr->solids_entry->object_type == STEEL_PYRAMID)
 				 && (!(traversal_ptr->solid_anim.AnimCued())))
 				{
-					traversal_ptr->special--;
+					traversal_ptr->special_accum += g_dt_seconds * BASE_GAME_FPS;
+					while (traversal_ptr->special_accum >= 1.0f) {
+						traversal_ptr->special_accum -= 1.0f;
+						traversal_ptr->special--;
+					}
 					if ((traversal_ptr->special < STEEL_COOLING_RATE
 		                    * (traversal_ptr->solid_anim.current_frame_number >> 16))
 					 && (traversal_ptr->special % STEEL_COOLING_RATE == 0))

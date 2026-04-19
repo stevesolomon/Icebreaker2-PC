@@ -138,7 +138,7 @@ Sprite *GetAnimCel(Animation *anim, frac16 frame_increment)
     int32 max_frame = anim->frame_count << 16;
     if (anim->cur_frame >= max_frame) {
         if (anim->loop)
-            anim->cur_frame %= max_frame;
+            anim->cur_frame = 0;   /* reset to exactly 0 so AnimComplete() detects the wrap */
         else
             anim->cur_frame = max_frame - (1 << 16);
     }

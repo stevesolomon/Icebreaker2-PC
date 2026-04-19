@@ -1985,7 +1985,10 @@ void  landscape::MaintainAnimatedTiles(bool endless_only)
 				{
 					if (traversal_ptr->tile_anim.AnimComplete())
 					{
-						if (RandomNumber(1,20) == 1)	
+						/* Scale probability so lava/slime trigger at same wall-clock rate regardless of fps */
+						int scaled_denom = (int)(20.0f / (g_dt_seconds * BASE_GAME_FPS));
+						if (scaled_denom < 1) scaled_denom = 1;
+						if (RandomNumber(1, scaled_denom) == 1)	
 							traversal_ptr->tile_anim.AdvanceFrame();
 					}
 					else

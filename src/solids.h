@@ -69,6 +69,7 @@ typedef struct anisolid
 	solid_object	*solids_entry;
 	anisolid			*next;
 	int32				special;						/* The use of this field is breed-specific. */
+	float				special_accum;				/* fractional accumulator for dt-scaled special countdown */
 };
 
 /****************************************************************************************/
