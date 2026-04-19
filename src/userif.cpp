@@ -1525,7 +1525,8 @@ int32 GameResultsScreen()
 {
 	ControlPadEventData	data;
 	int32 					i;
-	bool						level_cleared,level_to_report_on;
+	bool						level_cleared;
+	int32						level_to_report_on;
 	int32						a_option_to_show;
 
 	/* discard stale user data (if any) */
