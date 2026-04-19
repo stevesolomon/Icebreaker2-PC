@@ -1229,16 +1229,16 @@ int32 DisplayLevelsCompletedScreen(void)
 				if (level < 1)
 					level += 150;
 			}			
-			if (((action & ControlRightShift) && (action & ControlLeftShift))
-			 || (HasThisMuchTimePassedYet(300,FALSE)))
-			{
-				ScreenSaver();
-				ConstructLevelsCompletedScreen();
-				DisplayScreen(g_screen.sc_Screens[g_screen.sc_curScreen],0);
-				FadeFromBlack(&g_screen, 40);
-				faded = FALSE;
-				HasThisMuchTimePassedYet(0,TRUE);
-			}
+		}
+		if (((action & ControlRightShift) && (action & ControlLeftShift))
+		 || (HasThisMuchTimePassedYet(300,FALSE)))
+		{
+			ScreenSaver();
+			ConstructLevelsCompletedScreen();
+			DisplayScreen(g_screen.sc_Screens[g_screen.sc_curScreen],0);
+			FadeFromBlack(&g_screen, 40);
+			faded = FALSE;
+			HasThisMuchTimePassedYet(0,TRUE);
 		}
 	}
 	while (!(time_to_go));
