@@ -106,7 +106,7 @@
 #define FONT_LEFT_MARGIN			25
 #define FONT_TOP_MARGIN				11
 
-#define MAX_TEXT_CELS				7
+#define MAX_TEXT_CELS				8
 
 #define VERSION_TEXT					0
 #define EXTRA_LIVES_TEXT			1
@@ -119,7 +119,8 @@
 #define LEVEL_NAME_TEXT				8
 #define LEVEL_NUMBER_TEXT			9
 #define SEEKERS_LEFT_TEXT			10
-#define MAX_TEXT_MESSAGES			11
+#define PACK_LABEL_TEXT				11
+#define MAX_TEXT_MESSAGES			12
 
 #define PLAY_THIS_LEVEL_AGAIN		0
 #define PLAY_THE_NEXT_LEVEL		1

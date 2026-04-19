@@ -169,6 +169,15 @@ CCB* LoadIcebreakerTextIntoCel(int32 text_message_id, int32 x, int32 y)
 											sprintf (display, "Seekers remaining: %ld",
 											         enemies.CountSeekers());
 											break;
+
+		/*== index[6] ====================================================================*/
+
+		case PACK_LABEL_TEXT:		text_index[text_message_id] = 6;
+											if (GetCurrentPack() == PACK_IB1_CLASSIC)
+												sprintf (display, "Icebreaker 1  -  L: back to Icebreaker 2");
+											else
+												sprintf (display, "Icebreaker 2  -  R: Icebreaker 1 levels");
+											break;
 	}
 
 	text_cel_ptr[text_index[text_message_id]] = cFontHandlerPtr->PlaceTextInCel(display,
@@ -1073,8 +1082,14 @@ void ConstructLevelsCompletedScreen (void)
 		            LoadIcebreakerTextIntoCel (LEVEL_NAME_TEXT, FONT_LEFT_MARGIN + 65,
 						                           FONT_TOP_MARGIN - 1));			
 
+	DrawScreenCels(g_screen.sc_Screens[g_screen.sc_curScreen],
+		            LoadIcebreakerTextIntoCel (PACK_LABEL_TEXT, FONT_LEFT_MARGIN + 5, 215));
+
 	mode = EASY;
-	for (i = 0; i < MAXIMUM_LEVELS/2; i++)
+	int32 max_lv = GetCurrentPackMaxLevel();
+	int32 cells_to_check = (max_lv + 1) / 2;
+	if (cells_to_check > MAXIMUM_LEVELS/2) cells_to_check = MAXIMUM_LEVELS/2;
+	for (i = 0; i < cells_to_check; i++)
 	{
 		if ((stat_file.level_stats[i]) & 0xF0)
 		{
@@ -1123,8 +1138,8 @@ int32 DisplayLevelsCompletedScreen(void)
 
 	if (level < 1)
 		level = 1;
-	if (level > MAXIMUM_LEVELS)
-		level = MAXIMUM_LEVELS;
+	if (level > GetCurrentPackMaxLevel())
+		level = GetCurrentPackMaxLevel();
 	
 	level_grid_cel = LoadCel(LEVEL_GRID,   MEMTYPE_CEL);
 	easy_box_cel   = LoadCel(EASY_BOX, 	   MEMTYPE_CEL);
@@ -1219,23 +1234,23 @@ int32 DisplayLevelsCompletedScreen(void)
 				PlaySoundEffect(PING_SOUND);
 				level -= 15;
 				if (level < 1)
-					level += 150;
+					level += GetCurrentPackMaxLevel();
 			}
 			if (action & ControlDown)
 			{
 				supress_repeats = FramesToMillis(2);
 				PlaySoundEffect(PING_SOUND);
 				level += 15;
-				if (level > 150)
-					level -= 150;
+				if (level > GetCurrentPackMaxLevel())
+					level -= GetCurrentPackMaxLevel();
 			}
 			if (action & ControlRight)
 			{
 				supress_repeats = FramesToMillis(2);
 				PlaySoundEffect(PING_SOUND);
 				level++;
-				if (level > 150)
-					level -= 150;
+				if (level > GetCurrentPackMaxLevel())
+					level -= GetCurrentPackMaxLevel();
 			}
 			if (action & ControlLeft)
 			{
@@ -1243,8 +1258,30 @@ int32 DisplayLevelsCompletedScreen(void)
 				PlaySoundEffect(PING_SOUND);
 				level--;
 				if (level < 1)
-					level += 150;
-			}			
+					level += GetCurrentPackMaxLevel();
+			}
+
+			/* Single-shoulder press switches level packs.  The chord
+			   (both shoulders pressed together) is reserved for the
+			   screensaver and is handled below. */
+			{
+				bool only_r = (action & ControlRightShift) && !(action & ControlLeftShift);
+				bool only_l = (action & ControlLeftShift)  && !(action & ControlRightShift);
+				if (only_r && GetCurrentPack() == PACK_IB2_MAIN)
+				{
+					supress_repeats = FramesToMillis(8);
+					PlaySoundEffect(PING_SOUND);
+					SetCurrentPack(PACK_IB1_CLASSIC);
+					level = 1;
+				}
+				else if (only_l && GetCurrentPack() == PACK_IB1_CLASSIC)
+				{
+					supress_repeats = FramesToMillis(8);
+					PlaySoundEffect(PING_SOUND);
+					SetCurrentPack(PACK_IB2_MAIN);
+					level = 1;
+				}
+			}
 		}
 		if (((action & ControlRightShift) && (action & ControlLeftShift))
 		 || (HasThisMuchTimePassedYet(300,FALSE)))
@@ -1496,7 +1533,7 @@ int32 GameResultsScreen()
 	if (level_cleared)
 	{
 		a_option_to_show = PLAY_THE_NEXT_LEVEL;
-		if (level == 150)
+		if ((GetCurrentPack() == PACK_IB2_MAIN) && (level == 150))
 		{
 			random_level_spec = new(random_level);
 			GenerateRandomLevel();
@@ -1504,12 +1541,25 @@ int32 GameResultsScreen()
 		level++;
 		if (level < ROLSTON_LEVEL)
 			a_option_to_show = PLAY_NEXT_TUTORIAL;
-		if (level == ROLSTON_LEVEL)
+		if ((GetCurrentPack() == PACK_IB2_MAIN) && (level == ROLSTON_LEVEL))
 			a_option_to_show = PLAY_LEVEL_ONE;
-		if (level > 151)
+		if (GetCurrentPack() == PACK_IB2_MAIN)
 		{
-			level = 151;
-			a_option_to_show = PLAY_THIS_LEVEL_AGAIN;
+			if (level > 151)
+			{
+				level = 151;
+				a_option_to_show = PLAY_THIS_LEVEL_AGAIN;
+			}
+		}
+		else
+		{
+			/* Non-IB2 packs have no random-level slot; clamp to last
+			   level of the active pack and offer "play again". */
+			if (level > GetCurrentPackMaxLevel())
+			{
+				level = GetCurrentPackMaxLevel();
+				a_option_to_show = PLAY_THIS_LEVEL_AGAIN;
+			}
 		}
 	}
 

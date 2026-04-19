@@ -51,9 +51,13 @@
 
 #include "icebreaker.h"
 #include "levels.h"
+#include "levels_ib1.h"
 #include "nvram.h"
 #include "userif.h"
 #include "PlayMusic.h"
+
+/* Active level pack (drives FetchLevelName, legacy view, save record pack id) */
+static uint8_t g_current_pack = PACK_IB2_MAIN;
 
 extern status_file_format  stat_file;
 extern int32               music_state;
@@ -236,10 +240,12 @@ static void RebuildLegacyView(void)
         case INSANE: stat_file.difficulty_and_tracks |= 0x800000; break;
     }
 
-    for (int32 level = 1; level <= MAXIMUM_LEVELS; ++level)
+    int32 max_lv = GetCurrentPackMaxLevel();
+    if (max_lv > MAXIMUM_LEVELS) max_lv = MAXIMUM_LEVELS;
+    for (int32 level = 1; level <= max_lv; ++level)
     {
         uint32_t key = KeyForLevelIndex(level);
-        LevelRecord *rec = FindRecord(key, PACK_IB2_MAIN);
+        LevelRecord *rec = FindRecord(key, g_current_pack);
         if (!rec || rec->difficulty_mask == 0) continue;
 
         int idx   = (level - 1) / 2;
@@ -547,13 +553,13 @@ void SetLevelFlagInStatusRecordFile(int32 level, int32 mode)
     if (!bit) return;
 
     uint32_t key = KeyForLevelIndex(level);
-    LevelRecord *rec = FindRecord(key, PACK_IB2_MAIN);
+    LevelRecord *rec = FindRecord(key, g_current_pack);
     if (!rec)
     {
         LevelRecord nr;
         nr.key             = key;
         nr.difficulty_mask = bit;
-        nr.pack_id         = PACK_IB2_MAIN;
+        nr.pack_id         = g_current_pack;
         g_records.push_back(nr);
     }
     else
@@ -563,6 +569,33 @@ void SetLevelFlagInStatusRecordFile(int32 level, int32 mode)
 
     RebuildLegacyView();
     SaveToDisk(PackDifficultyAndTracks());
+}
+
+/* ---- Active pack accessors --------------------------------------------- */
+
+uint8_t GetCurrentPack(void)
+{
+    return g_current_pack;
+}
+
+void SetCurrentPack(uint8_t pack_id)
+{
+    if (pack_id == g_current_pack) return;
+    g_current_pack = pack_id;
+    /* Repopulate the legacy nibble view so the grid renderer immediately
+       reflects the new pack's completion records.                        */
+    EnsureLoaded();
+    RebuildLegacyView();
+}
+
+int32 GetCurrentPackMaxLevel(void)
+{
+    switch (g_current_pack)
+    {
+        case PACK_IB1_CLASSIC: return (int32)kIB1LevelCount;
+        case PACK_IB2_MAIN:
+        default:               return (int32)MAXIMUM_LEVELS;
+    }
 }
 
 void DumpStatusRecordFile(void)

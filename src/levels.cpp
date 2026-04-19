@@ -24,6 +24,8 @@ SEEKER.CP where it really belongs).
 
 #include "icebreaker.h"
 #include "levels.h"
+#include "levels_ib1.h"
+#include "nvram.h"
 #include "animation.h"
 #include "landscape.h"
 #include "solids.h"
@@ -48,9 +50,30 @@ level number as input and returns the name of the level as a string. It also cop
 name of the corresponding level spec file into the global variable g_level_filename; this
 kills the proverbial two birds with one stone and saves us the trouble of having to 
 maintain two separate, gigantic, level-specific case statements.
+
+	Pack-aware dispatcher: the original IB2 mapping (plus tutorials and the
+randomly-generated sentinel) lives in FetchLevelNameIB2.  When the active pack is
+PACK_IB1_CLASSIC, levels 1..kIB1LevelCount index into the kIB1Catalog table.
+Negative tutorial indices and ITS_TOTALLY_RANDOM are always handled by the IB2
+path so they remain reachable regardless of the active pack.
 *****************************************************************************************/
 
+static void FetchLevelNameIB2 (char *msg, int32 level);
+
 void FetchLevelName (char *msg, int32 level)
+{
+	if ((GetCurrentPack() == PACK_IB1_CLASSIC)
+	 && (level >= 1) && (level <= kIB1LevelCount))
+	{
+		const IB1LevelEntry &e = kIB1Catalog[level - 1];
+		sprintf (msg, "%c%s%c", 34, e.display_name, 34);
+		sprintf (g_level_filename, "$boot/IceFiles/Levels/%s", e.filename);
+		return;
+	}
+	FetchLevelNameIB2 (msg, level);
+}
+
+static void FetchLevelNameIB2 (char *msg, int32 level)
 {
 	sprintf (msg, "This is not a valid level."); 					
 	strcpy(g_level_filename,"$boot/IceFiles/Newlevels/impossible");

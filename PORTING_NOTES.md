@@ -355,24 +355,57 @@ If `tracks != 0x3FFFF` after a load, `standard_musical_selections` is set to
 | `DeleteStatusFile()` | Reset-progress menu option | Deletes `savegame.dat`, zeros in-memory state. |
 | `FakeCompletion(first, last)` / `DumpStatusRecordFile()` | Debug only | Test seeding / pretty-printing. |
 
-### Adding a new level pack
+### Active pack & multi-pack support
 
-The save layer is now decoupled from `FetchLevelName`'s switch. To add the
-original Icebreaker levels (or any other pack):
+The save layer tracks an active "pack" via `g_current_pack` (default
+`PACK_IB2_MAIN`). `GetCurrentPack()` / `SetCurrentPack(pack_id)` are the
+public API. Setting the pack rebuilds the legacy `stat_file.level_stats[]`
+view to project only that pack's records, so the existing grid renderer in
+`userif.cpp` automatically shows the right completion bits without any
+renderer changes. `SetLevelFlagInStatusRecordFile` writes new records under
+the active pack, and the `level → level_key` mapping done via `FetchLevelName`
+is also pack-aware (see `src/levels.cpp`).
 
-1. Drop the level files into `iso_assets/IceFiles/` (subfolder of your choice).
-2. Wire them into the level menu / loader. While the legacy
-   `FetchLevelName` switch is still in place, the simplest interim path is a
-   parallel manifest table indexed by a new sentinel level number range — but
-   nothing in the save layer requires this.
-3. From completion code, call
-   `MarkLevelCompleted(LevelKeyFromFilename(filename), PACK_IB1_CLASSIC, mode)`
-   instead of `SetLevelFlagInStatusRecordFile(level, mode)`. The IB2 nibble
-   view in `stat_file.level_stats[]` is untouched by non-`PACK_IB2_MAIN`
-   writes, so the existing IB2 grid renderer keeps working unchanged.
-4. The grid renderer for the new pack should query progress with
-   `IsLevelCompleted(level_key, PACK_IB1_CLASSIC, mode)` rather than reading
-   `stat_file.level_stats[]` directly.
+`GetCurrentPackMaxLevel()` returns the active pack's level count
+(150 for `PACK_IB2_MAIN`, `kIB1LevelCount` for `PACK_IB1_CLASSIC`). Use it
+instead of hardcoded `150` / `MAXIMUM_LEVELS` in any new grid/loop code.
+
+### Icebreaker 1 level pack (`PACK_IB1_CLASSIC`)
+
+The original 3DO Icebreaker (1) levels under `assets/Levels/` are exposed as
+a second level-select grid. Catalog: `src/levels_ib1.cpp` /
+`src/levels_ib1.h` (struct `IB1LevelEntry { display_name; filename }`,
+table `kIB1Catalog[kIB1LevelCount]`).
+
+- Order matches the original 3DO release: each entry's array index + 1
+  corresponds to the level constant of the same numeric value in the original
+  Magnet Interactive source (see `icebreaker-master/levels.h` constants
+  1..150). Display names and on-disk filenames are extracted from the original
+  `FetchLevelName` switch in `icebreaker-master/levels.cp`.
+- All 150 main IB1 levels are included. Lesson levels (`lesson_1..4`) are
+  excluded since they're already reachable from the tutorial menu, and the
+  random sentinel (`ITS_TOTALLY_RANDOM`, level 151) is not part of the grid.
+  Subdirectories under `assets/Levels/` (`origs of levels Ken messed with`,
+  `R E J E C T S`) are likewise excluded.
+- Display names are stored without surrounding quote marks; the dispatcher
+  in `levels.cpp` wraps them with literal quotes via the original
+  `sprintf("%c%s%c",34,...,34)` pattern (e.g. catalog entry
+  `Bathroom Sink` → grid label `"Bathroom Sink"`).
+- Files are loaded as `$boot/IceFiles/Levels/<basename>` which the path
+  translator resolves to `assets/Levels/<basename>`.
+- Completion data for IB1 is stored under `pack_id = PACK_IB1_CLASSIC` (1) in
+  the same `savegame.dat`, fully independent from IB2 progress.
+
+To add another pack later:
+
+1. Add a `PACK_*` constant in `nvram.h`.
+2. Provide a catalog table analogous to `kIB1Catalog`.
+3. Add a `FetchLevelName<PACK>` and dispatch from the `FetchLevelName`
+   top-level switch in `levels.cpp`.
+4. Extend `GetCurrentPackMaxLevel()` to return the new count.
+5. Wire the pack into the grid input handler in
+   `DisplayLevelsCompletedScreen` (currently single R/L cycles between IB2
+   and IB1).
 
 ### Legacy v1 format (no longer read)
 
@@ -467,5 +500,8 @@ keyboard if a level/menu calls for it.
   screensaver. The keyboard mapping passes the bits through correctly; if
   the in-game feature feels unresponsive, the cause is in the consumer
   (`userif.cpp`'s screensaver detection logic), not the platform layer.
+- On the level-select grid, **single-press R** switches to the Icebreaker 1
+  level pack and **single-press L** switches back to Icebreaker 2. The
+  chord (both held) is reserved for the screensaver and does not swap packs.
 - The window also processes standard SDL events: closing the window or
   pressing `Alt+F4` cleanly exits the program.

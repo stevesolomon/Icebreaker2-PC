@@ -86,4 +86,17 @@ extern uint32_t LevelKeyFromFilename(const char *filename);
 extern bool IsLevelCompleted(uint32_t key, uint8_t pack_id, int32 mode);
 extern void MarkLevelCompleted(uint32_t key, uint8_t pack_id, int32 mode);
 
+/* ---- Active pack ------------------------------------------------------- */
+/*  The active pack drives FetchLevelName(), the legacy stat_file view, the
+    level-grid scrolling bounds, and the pack id written to new save records.
+    Defaults to PACK_IB2_MAIN at startup.  Switching packs forces an
+    immediate rebuild of the legacy view so the grid renderer sees the right
+    completion bits. */
+extern uint8_t GetCurrentPack(void);
+extern void    SetCurrentPack(uint8_t pack_id);
+
+/* Inclusive maximum level number for the currently active pack.  IB2 uses
+   MAXIMUM_LEVELS (150); IB1 returns kIB1LevelCount (≤150).               */
+extern int32   GetCurrentPackMaxLevel(void);
+
 #endif /* NVRAM_H */

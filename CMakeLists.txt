@@ -64,6 +64,7 @@ set(GAME_SOURCES
     src/weapon.cpp
     src/deadlist.cpp
     src/levels.cpp
+    src/levels_ib1.cpp
     src/sounds.cpp
     src/userif.cpp
     src/FontHandler.cpp
@@ -83,6 +84,7 @@ set(GAME_HEADERS
     src/weapon.h
     src/deadlist.h
     src/levels.h
+    src/levels_ib1.h
     src/sounds.h
     src/userif.h
     src/FontHandler.h
