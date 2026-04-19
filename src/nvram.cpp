@@ -85,7 +85,7 @@ struct LevelRecord
 };
 
 static std::vector<LevelRecord>     g_records;
-static std::map<int32, uint32_t>    g_level_index_to_key_cache;
+static std::map<std::pair<int32, uint8_t>, uint32_t> g_level_index_to_key_cache;
 static bool                         g_loaded = false;
 
 /* ---- CRC32 (IEEE poly 0xEDB88320) -------------------------------------- */
@@ -177,9 +177,11 @@ uint32_t LevelKeyFromFilename(const char *filename)
 
 /* Look up (and cache) the level_key for a legacy integer level number.
    Uses FetchLevelName to discover the level's filename.                    */
-static uint32_t KeyForLevelIndex(int32 level)
+static uint32_t KeyForLevelIndex(int32 level, uint8_t pack_id)
 {
-    std::map<int32, uint32_t>::iterator it = g_level_index_to_key_cache.find(level);
+    std::pair<int32, uint8_t> cache_key(level, pack_id);
+    std::map<std::pair<int32, uint8_t>, uint32_t>::iterator it =
+        g_level_index_to_key_cache.find(cache_key);
     if (it != g_level_index_to_key_cache.end())
         return it->second;
 
@@ -190,14 +192,20 @@ static uint32_t KeyForLevelIndex(int32 level)
     std::strncpy(saved, g_level_filename, sizeof(saved));
     saved[sizeof(saved) - 1] = '\0';
 
+    /* FetchLevelName dispatches on g_current_pack; temporarily swap so we
+       always resolve in the requested pack regardless of which one is active. */
+    uint8_t saved_pack = g_current_pack;
+    g_current_pack = pack_id;
     FetchLevelName(throwaway_name, level);
+    g_current_pack = saved_pack;
+
     uint32_t key = LevelKeyFromFilename(g_level_filename);
 
     /* Restore — we don't own g_level_filename. */
     std::strncpy(g_level_filename, saved, sizeof(g_level_filename));
     g_level_filename[sizeof(g_level_filename) - 1] = '\0';
 
-    g_level_index_to_key_cache[level] = key;
+    g_level_index_to_key_cache[cache_key] = key;
     return key;
 }
 
@@ -244,7 +252,7 @@ static void RebuildLegacyView(void)
     if (max_lv > MAXIMUM_LEVELS) max_lv = MAXIMUM_LEVELS;
     for (int32 level = 1; level <= max_lv; ++level)
     {
-        uint32_t key = KeyForLevelIndex(level);
+        uint32_t key = KeyForLevelIndex(level, g_current_pack);
         LevelRecord *rec = FindRecord(key, g_current_pack);
         if (!rec || rec->difficulty_mask == 0) continue;
 
@@ -498,7 +506,7 @@ bool CheckForVictory(int32 level, int32 number_of_levels_to_check)
 
     for (int32 lv = 1; lv <= number_of_levels_to_check; ++lv)
     {
-        uint32_t key = KeyForLevelIndex(lv);
+        uint32_t key = KeyForLevelIndex(lv, PACK_IB2_MAIN);
         LevelRecord *rec = FindRecord(key, PACK_IB2_MAIN);
         if (!rec || rec->difficulty_mask == 0)
         {
@@ -552,7 +560,7 @@ void SetLevelFlagInStatusRecordFile(int32 level, int32 mode)
     uint8_t bit = DifficultyBit(mode);
     if (!bit) return;
 
-    uint32_t key = KeyForLevelIndex(level);
+    uint32_t key = KeyForLevelIndex(level, g_current_pack);
     LevelRecord *rec = FindRecord(key, g_current_pack);
     if (!rec)
     {
@@ -612,7 +620,7 @@ void DumpStatusRecordFile(void)
     /* IB2 main pack: report by level number for readability. */
     for (int32 lv = 1; lv <= MAXIMUM_LEVELS; ++lv)
     {
-        uint32_t key = KeyForLevelIndex(lv);
+        uint32_t key = KeyForLevelIndex(lv, PACK_IB2_MAIN);
         LevelRecord *rec = FindRecord(key, PACK_IB2_MAIN);
         if (!rec || rec->difficulty_mask == 0) continue;
 
