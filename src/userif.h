@@ -121,7 +121,8 @@
 #define LEVEL_NUMBER_TEXT			9
 #define SEEKERS_LEFT_TEXT			10
 #define PACK_LABEL_TEXT				11
-#define MAX_TEXT_MESSAGES			12
+#define CREATOR_TEXT					12
+#define MAX_TEXT_MESSAGES			13
 
 #define PLAY_THIS_LEVEL_AGAIN		0
 #define PLAY_THE_NEXT_LEVEL		1
@@ -177,6 +178,7 @@ extern void  PreGetReadyScreen(void);
 extern void  DisplayGameResults (bool  level_cleared, int32 a_option_to_show,
                                  int32 level_to_report_on);
 extern int32 GetReadyScreen(void);
+extern const char* GetLevelCreator(int32 lvl);
 extern int32 GameResultsScreen(void);
 extern int32 SelectTutorial(void);
 extern int32 ChangeSkillLevel(void);

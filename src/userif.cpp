@@ -60,6 +60,77 @@ CCB *hard_box_cel;
 CCB *insane_box_cel;
 CCB *highlight_cel;	
 
+/*********************************  GetLevelCreator  *************************************
+	Returns the creator name for a given level number, as documented in the level.h
+files of both Icebreaker 1 and Icebreaker 2 (the data is identical between the two).
+Levels -3..0 are tutorials, 1..150 are the regular levels, 151 is the random level.
+*****************************************************************************************/
+
+const char* GetLevelCreator(int32 lvl)
+{
+	static const char* creators[] = {
+		/* -3 */ "Andy",
+		/* -2 */ "Andy",
+		/* -1 */ "Andy",
+		/*  0 */ "Andy",
+		/*  1 */ "Ken/Andy",
+		/*  2 */ "Ken",         /*  3 */ "Ken",         /*  4 */ "Andy",
+		/*  5 */ "Ken",         /*  6 */ "Ken",         /*  7 */ "Andy",
+		/*  8 */ "Ken",         /*  9 */ "Ken",         /* 10 */ "Ken",
+		/* 11 */ "Ken",         /* 12 */ "Ken",         /* 13 */ "Ken",
+		/* 14 */ "Ken",         /* 15 */ "Ken",         /* 16 */ "Ken",
+		/* 17 */ "Ken",         /* 18 */ "Ken",         /* 19 */ "Ken",
+		/* 20 */ "Ken",         /* 21 */ "Ken",         /* 22 */ "Ken",
+		/* 23 */ "Ken",         /* 24 */ "Ken",         /* 25 */ "Ken",
+		/* 26 */ "Ken",         /* 27 */ "Ken",         /* 28 */ "Ken",
+		/* 29 */ "Andy",        /* 30 */ "Andy",        /* 31 */ "Ken",
+		/* 32 */ "Mike Young",  /* 33 */ "Ken",         /* 34 */ "Ken",
+		/* 35 */ "Ken",         /* 36 */ "Ken",         /* 37 */ "Andy",
+		/* 38 */ "Ken",         /* 39 */ "Ken",         /* 40 */ "Mike Young",
+		/* 41 */ "Kristin Looney", /* 42 */ "Andy",     /* 43 */ "Paul",
+		/* 44 */ "Ken",         /* 45 */ "Ken",         /* 46 */ "Paul Murphy",
+		/* 47 */ "Ken",         /* 48 */ "Ken",         /* 49 */ "Mike Young",
+		/* 50 */ "Ken",         /* 51 */ "Mike Young",  /* 52 */ "Mike Young",
+		/* 53 */ "Ken",         /* 54 */ "Ken",         /* 55 */ "Andy",
+		/* 56 */ "Ken",         /* 57 */ "Mike Young",  /* 58 */ "Ken",
+		/* 59 */ "Keith",       /* 60 */ "Andy/Keith",  /* 61 */ "Mike Young",
+		/* 62 */ "Mike Young",  /* 63 */ "Kristin Looney", /* 64 */ "Andy",
+		/* 65 */ "Ken",         /* 66 */ "Zeb",         /* 67 */ "Andy",
+		/* 68 */ "Ken",         /* 69 */ "Keith",       /* 70 */ "Mike Young",
+		/* 71 */ "Andy/Keith",  /* 72 */ "Ken",         /* 73 */ "Ken",
+		/* 74 */ "Andy",        /* 75 */ "Andy",        /* 76 */ "Mike Young",
+		/* 77 */ "Andy",        /* 78 */ "Ken",         /* 79 */ "Ken",
+		/* 80 */ "Mike Young",  /* 81 */ "Mike Young",  /* 82 */ "Ken",
+		/* 83 */ "Ken",         /* 84 */ "Ken",         /* 85 */ "Lisa Woronicz",
+		/* 86 */ "Mike Young",  /* 87 */ "Andy",        /* 88 */ "Ken",
+		/* 89 */ "Mike Young",  /* 90 */ "Ken",         /* 91 */ "Mike Young",
+		/* 92 */ "Mike Young",  /* 93 */ "Andy",        /* 94 */ "Mike Young",
+		/* 95 */ "Mike Young",  /* 96 */ "Ken",         /* 97 */ "Paul Murphy",
+		/* 98 */ "Mike Young",  /* 99 */ "Andy",        /*100 */ "Ken",
+		/*101 */ "Andy",        /*102 */ "Keith",       /*103 */ "Mike Young",
+		/*104 */ "Keith",       /*105 */ "Mike Young",  /*106 */ "Andy",
+		/*107 */ "Mike Young",  /*108 */ "Andy",        /*109 */ "Mike Young",
+		/*110 */ "Ken",         /*111 */ "Mike Young",  /*112 */ "Andy",
+		/*113 */ "Mike Young",  /*114 */ "Andy",        /*115 */ "Keith",
+		/*116 */ "Andy",        /*117 */ "Keith",       /*118 */ "Ken",
+		/*119 */ "Ken",         /*120 */ "Paul Murphy", /*121 */ "Mike Young",
+		/*122 */ "Ken",         /*123 */ "Ken",         /*124 */ "Ken",
+		/*125 */ "Mike Young",  /*126 */ "Ken",         /*127 */ "Paul",
+		/*128 */ "Ken",         /*129 */ "Andy",        /*130 */ "Ken",
+		/*131 */ "Ken",         /*132 */ "Ken",         /*133 */ "Ken",
+		/*134 */ "Ken",         /*135 */ "Ken",         /*136 */ "Ken",
+		/*137 */ "Keith",       /*138 */ "Ken",         /*139 */ "Keith",
+		/*140 */ "Ken",         /*141 */ "Mike Young",  /*142 */ "Ken",
+		/*143 */ "Ken",         /*144 */ "Ken",         /*145 */ "Ken",
+		/*146 */ "Ken",         /*147 */ "Ken",         /*148 */ "Keith",
+		/*149 */ "Ken",         /*150 */ "Ken",         /*151 */ "Computer generated"
+	};
+	int32 idx = lvl + 3;
+	if (idx < 0 || idx >= (int32)(sizeof(creators)/sizeof(creators[0])))
+		return "Unknown";
+	return creators[idx];
+}
+
 /*************************************  DrawCelHere  *************************************
 	This is a convenience routine that takes a cel and coordinates you want it drawn at,
 and does the move and draw for you.
@@ -177,6 +248,12 @@ CCB* LoadIcebreakerTextIntoCel(int32 text_message_id, int32 x, int32 y)
 												sprintf (display, "Icebreaker 1  -  L: back to Icebreaker 2");
 											else
 												sprintf (display, "Icebreaker 2  -  R: Icebreaker 1 levels");
+											break;
+
+		/*== index[7] ====================================================================*/
+
+		case CREATOR_TEXT:			text_index[text_message_id] = 7;
+											sprintf (display, "%s", GetLevelCreator(level));
 											break;
 	}
 
@@ -1388,7 +1465,42 @@ int32 GetReadyScreen()
 	
 	DrawScreenCels(g_screen.sc_Screens[g_screen.sc_curScreen],
 		            LoadIcebreakerTextIntoCel (PYRAMIDS_ONLY_TEXT, 166, 79));				
-	
+
+	{
+		/* Two-piece creator line: small "[ Creator ] :" label followed by the
+		 * normal-size author name.  The label uses an alternate-size font; the
+		 * name reuses the standard rendering path.  Both are positioned so the
+		 * label sits at the same Y as the name's rendered glyphs. */
+		char creator_buf[80];
+		CCB *creator_label = cFontHandlerPtr->PlaceTextInCelSized(
+			(char *)"[ Creator ] :",
+			TRANSPARENT_BG_REDVALUE, TRANSPARENT_BG_GREENVALUE, TRANSPARENT_BG_BLUEVALUE,
+			WHITE_FG_REDVALUE, WHITE_FG_GREENVALUE, WHITE_FG_BLUEVALUE,
+			text_cel_num[7], 9);
+		int label_w = 0;
+		if (creator_label)
+		{
+			CenterCelOnScreen(creator_label);
+			creator_label->ccb_XPos = 39 << 16;
+			creator_label->ccb_YPos = 98 << 16;
+			DrawScreenCels(g_screen.sc_Screens[g_screen.sc_curScreen], creator_label);
+			label_w = creator_label->ccb_Width;
+		}
+
+		sprintf(creator_buf, "%s", GetLevelCreator(level));
+		CCB *creator_name = cFontHandlerPtr->PlaceTextInCel(creator_buf,
+			TRANSPARENT_BG_REDVALUE, TRANSPARENT_BG_GREENVALUE, TRANSPARENT_BG_BLUEVALUE,
+			WHITE_FG_REDVALUE, WHITE_FG_GREENVALUE, WHITE_FG_BLUEVALUE,
+			text_cel_num[3]);
+		if (creator_name)
+		{
+			CenterCelOnScreen(creator_name);
+			creator_name->ccb_XPos = (39 + label_w + 4) << 16;
+			creator_name->ccb_YPos = 97 << 16;
+			DrawScreenCels(g_screen.sc_Screens[g_screen.sc_curScreen], creator_name);
+		}
+	}
+
 	reusable_cel = LoadCel(PRE_LEVEL_MENU_BAR, MEMTYPE_CEL);
 	if (reusable_cel == NULL)
 		printf("GetReadyScreen: Unable to load artwork.\n");

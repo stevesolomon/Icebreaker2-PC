@@ -37,6 +37,11 @@ C_FontHandler::C_FontHandler()
     gFont = nullptr;
     numTextCels = 0;
     std::memset(gTextCels, 0, sizeof(gTextCels));
+    for (unsigned i = 0; i < MAX_ALT_FONTS; i++)
+    {
+        gAltFonts[i] = nullptr;
+        gAltSizes[i] = 0;
+    }
 }
 
 
@@ -64,6 +69,15 @@ C_FontHandler::~C_FontHandler()
     {
         TTF_CloseFont(gFont);
         gFont = nullptr;
+    }
+
+    for (unsigned i = 0; i < MAX_ALT_FONTS; i++)
+    {
+        if (gAltFonts[i])
+        {
+            TTF_CloseFont(gAltFonts[i]);
+            gAltFonts[i] = nullptr;
+        }
     }
 }
 
@@ -136,9 +150,10 @@ int C_FontHandler::CreateCelFromFont(void)
 /******************************************************************************/
 
 CCB *C_FontHandler::RenderTextToCel(char *textContent, SDL_Color fgColor,
-                                    SDL_Color bgColor, unsigned textCelID)
+                                    SDL_Color bgColor, unsigned textCelID,
+                                    TTF_Font *font)
 {
-    if (!gFont)
+    if (!font)
     {
         printf("ERROR - No font loaded in RenderTextToCel().\n");
         return nullptr;
@@ -169,7 +184,7 @@ CCB *C_FontHandler::RenderTextToCel(char *textContent, SDL_Color fgColor,
      * pixel value 0x0000 was the CEL transparency key. TTF_RenderText_Blended
      * gives us anti-aliased text on a fully transparent RGBA surface. */
     (void)bgColor; /* background is always transparent in blended mode */
-    SDL_Surface *rawSurface = TTF_RenderText_Blended(gFont, textContent, fgColor);
+    SDL_Surface *rawSurface = TTF_RenderText_Blended(font, textContent, fgColor);
     if (!rawSurface)
     {
         printf("ERROR - TTF_RenderText_Blended() failed: %s\n", TTF_GetError());
@@ -258,7 +273,7 @@ CCB *C_FontHandler::PlaceTextInCel(char *textContent, uint32 redBgColor,
     bgColor.b = static_cast<uint8>(blueBgColor  / 257);
     bgColor.a = 255;
 
-    return RenderTextToCel(textContent, fgColor, bgColor, textCelID);
+    return RenderTextToCel(textContent, fgColor, bgColor, textCelID, gFont);
 }
 
 
@@ -280,7 +295,87 @@ CCB *C_FontHandler::PlaceTextInCel(char *textContent, unsigned textCelID)
     SDL_Color fgColor = { 255, 255, 255, 255 }; /* white */
     SDL_Color bgColor = {   0,   0,   0, 255 }; /* black */
 
-    return RenderTextToCel(textContent, fgColor, bgColor, textCelID);
+    return RenderTextToCel(textContent, fgColor, bgColor, textCelID, gFont);
+}
+
+
+/********************  C_FontHandler Class - GetFontAtSize()  *****************/
+/*                                                                            */
+/*  Returns a TTF_Font* opened at the requested point size, lazily loading    */
+/*  and caching it.  Falls back to gFont if the alternate cache is full or    */
+/*  the font fails to open.                                                   */
+/*                                                                            */
+/******************************************************************************/
+
+TTF_Font *C_FontHandler::GetFontAtSize(int ptSize)
+{
+    if (ptSize <= 0 || ptSize == DEFAULT_FONT_SIZE)
+        return gFont;
+
+    for (unsigned i = 0; i < MAX_ALT_FONTS; i++)
+    {
+        if (gAltFonts[i] && gAltSizes[i] == ptSize)
+            return gAltFonts[i];
+    }
+
+    TTF_Font *f = TTF_OpenFont("assets/MetaArt/Helvetica.ttf", ptSize);
+    if (!f)
+    {
+        printf("WARN - TTF_OpenFont(size=%d) failed: %s\n", ptSize, TTF_GetError());
+        return gFont;
+    }
+    /* Match the default font's bold weight; outline rendering produced
+     * unreadable strokes at small sizes, so we only apply the style. */
+    TTF_SetFontStyle(f, TTF_STYLE_BOLD);
+
+    for (unsigned i = 0; i < MAX_ALT_FONTS; i++)
+    {
+        if (!gAltFonts[i])
+        {
+            gAltFonts[i] = f;
+            gAltSizes[i] = ptSize;
+            return f;
+        }
+    }
+
+    printf("WARN - Alt font cache full; closing size=%d.\n", ptSize);
+    TTF_CloseFont(f);
+    return gFont;
+}
+
+
+/******************  C_FontHandler Class - PlaceTextInCelSized  ***************/
+/*                                                                            */
+/*  Same as PlaceTextInCel but renders at the supplied point size.            */
+/*                                                                            */
+/******************************************************************************/
+
+CCB *C_FontHandler::PlaceTextInCelSized(char *textContent, uint32 redBgColor,
+                                        uint32 greenBgColor, uint32 blueBgColor,
+                                        uint32 redFgColor, uint32 greenFgColor,
+                                        uint32 blueFgColor, unsigned textCelID,
+                                        int ptSize)
+{
+    if (std::strlen(textContent) > 80)
+    {
+        printf("ERROR - A string greater than 80 characters was passed!\n");
+        return nullptr;
+    }
+
+    SDL_Color fgColor;
+    fgColor.r = static_cast<uint8>(redFgColor   / 257);
+    fgColor.g = static_cast<uint8>(greenFgColor / 257);
+    fgColor.b = static_cast<uint8>(blueFgColor  / 257);
+    fgColor.a = 255;
+
+    SDL_Color bgColor;
+    bgColor.r = static_cast<uint8>(redBgColor   / 257);
+    bgColor.g = static_cast<uint8>(greenBgColor / 257);
+    bgColor.b = static_cast<uint8>(blueBgColor  / 257);
+    bgColor.a = 255;
+
+    return RenderTextToCel(textContent, fgColor, bgColor, textCelID,
+                           GetFontAtSize(ptSize));
 }
 
 
