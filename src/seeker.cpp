@@ -1385,6 +1385,7 @@ void seeker::AnimateSeekers(int32 x_change, int32 y_change)
 	int32	old_x,old_y;
 	int32	new_direction;
 	dude  *next_target;
+	int32 saved_horz_speed, saved_vert_speed;
 
 	moved = FALSE;
 	target = seeker_list;
@@ -1392,6 +1393,13 @@ void seeker::AnimateSeekers(int32 x_change, int32 y_change)
 	{
 		//DumpMovementStatus(target);
 		next_target = target->next;
+
+		/* Save and scale seeker speeds for framerate independence */
+		saved_horz_speed = target->horz_speed;
+		saved_vert_speed = target->vert_speed;
+		target->horz_speed = ScaleByDT(target->horz_speed);
+		target->vert_speed = ScaleByDT(target->vert_speed);
+
 		old_x = target->walk_anim[target->direction].current_frame_ccb->ccb_XPos;
 		old_y = target->walk_anim[target->direction].current_frame_ccb->ccb_YPos;
 		/* If we have a pointer to an object that was blocking us, check to make sure   */
@@ -1492,7 +1500,7 @@ void seeker::AnimateSeekers(int32 x_change, int32 y_change)
 				}
 				else
 				{
-					target->immobile_counter++;
+					target->immobile_counter += g_dt_seconds * BASE_GAME_FPS;
 					/* Even though we aren't moving, keeping playing animation until       */
 					/* re-cued so that it doesn't stop on a frame that looks dumb. On the  */
 					/* other hand, some seekers never really stop, so keep animating them. */
@@ -1550,7 +1558,7 @@ void seeker::AnimateSeekers(int32 x_change, int32 y_change)
 			                                      current_frame_ccb->ccb_XPos)
 			                         && (old_y == target->walk_anim[target->direction].
 											              current_frame_ccb->ccb_YPos))
-												target->stranded_counter++;
+												target->stranded_counter += g_dt_seconds * BASE_GAME_FPS;
 											else
 												target->stranded_counter = 0;
 											break;
@@ -1576,12 +1584,14 @@ void seeker::AnimateSeekers(int32 x_change, int32 y_change)
 											break;
 			default:						printf("hey");
 		}
+		/* Restore original seeker speeds after framerate-scaled processing */
+		target->horz_speed = saved_horz_speed;
+		target->vert_speed = saved_vert_speed;
 		target = next_target;
 	}
 }
 
-/*************************  seeker::DealWithInvisibleFence  ******************************
-	This function implements an invisible fence that keeps all types of seekers from
+/*************************  seeker::DealWithInvisibleFence  ******************************	This function implements an invisible fence that keeps all types of seekers from
 journeying too far into the wasteland, the purpose of which is to eliminate the
 effectivness of the cheeseball strategy of getting all the seekers to follow you as you
 go way out into the wasteland, and then racing back to destroy pyramids unharrassed.
@@ -3627,7 +3637,7 @@ void seeker::DealWithSwamp(dude *target)
 						  target->solids_entry->col_detect_x + 1,
 						  target->solids_entry->col_detect_y + 1))
 	{
-		target->bogged_down_in_swamp = 5;
+		target->bogged_down_in_swamp = FramesToMillis(5);
 		switch (target->breed)
 		{
 			case ZOMBIE: 			  target->horz_speed = 0x00022500;  /* i.e. 2.25 */
@@ -3655,7 +3665,7 @@ void seeker::DealWithSwamp(dude *target)
 
 	if (target->bogged_down_in_swamp)
 	{
-		target->bogged_down_in_swamp--;
+		target->bogged_down_in_swamp = TickDownTimer(target->bogged_down_in_swamp);
 		if (target->bogged_down_in_swamp == 0)
 			SetSeekerSpeeds(target);
 	}

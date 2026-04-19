@@ -389,17 +389,17 @@ void PreGameMenu()
 		GetControlPad (1,FALSE,&data);
 		action = data.cped_ButtonBits;
 		if (supress_repeats)
-			supress_repeats--;
+			supress_repeats = TickDownTimer(supress_repeats);
 		if (action & ControlUp)
 		{
-			supress_repeats = 10;
+			supress_repeats = FramesToMillis(10);
 			current_selection--;
 			if (current_selection < 0)
 				current_selection = TOTAL_MINOR_PROGRAMS;
 		}
 		if (action & ControlDown)
 		{
-			supress_repeats = 10;
+			supress_repeats = FramesToMillis(10);
 			current_selection++;
 			if (current_selection > TOTAL_MINOR_PROGRAMS)
 				current_selection = 0;
@@ -407,7 +407,7 @@ void PreGameMenu()
 
 	   if ((!(supress_repeats)) && (action & ControlA))
 		{
-			supress_repeats = 10;
+			supress_repeats = FramesToMillis(10);
 			if (current_selection == 0)
 			{
 				g_screen.sc_curScreen = 1 - g_screen.sc_curScreen;
@@ -424,7 +424,7 @@ void PreGameMenu()
 			       current_selection);
 		}
 
-		RegulateSpeed(FRAME_RATE_15_PER_SECOND);
+		UpdateDeltaTime();
 		g_screen.sc_curScreen = 1 - g_screen.sc_curScreen;
 		DrawScreenCels(g_screen.sc_Screens[g_screen.sc_curScreen],black_background);
 		DrawScreenCels(g_screen.sc_Screens[g_screen.sc_curScreen],menu);
@@ -1178,13 +1178,13 @@ void InputGenerator(int32 &x_change, int32 &y_change)
 	if (data.cped_ButtonBits)
 		operating_mode = DEMO_MODE_ABORT;
 
-	if ((duration < 0) || (duration > 8))
+	if ((duration < 0) || (duration > FramesToMillis(8)))
 	{
-		duration = RandomNumber(3,8);
+		duration = FramesToMillis(RandomNumber(3,8));
 		icebreaker.direction =  RandomNumber(NORTH,NORTHWEST);
 	}
 	
-	duration--;
+	duration = TickDownTimer(duration);
 	switch(icebreaker.direction)
 	{
 		case NORTH:     y_change = icebreaker.vert_speed;     break;
@@ -1244,7 +1244,7 @@ void InputHandler(int32 &x_change, int32 &y_change)
 	action = data.cped_ButtonBits;
 	
 	if (supress_repeats)
-		supress_repeats--;
+		supress_repeats = TickDownTimer(supress_repeats);
 
 	if (action & ControlStart)
 	{
@@ -1255,7 +1255,7 @@ void InputHandler(int32 &x_change, int32 &y_change)
 				UnloadCel(lost_arrow);
 				lost_arrow = (CCB *) NULL;
 			}
-			supress_repeats = 3;
+			supress_repeats = FramesToMillis(3);
 			game_paused = !(game_paused);
 		}
 	}
@@ -1300,7 +1300,7 @@ void InputHandler(int32 &x_change, int32 &y_change)
 	{
 		if (action & ControlA)
 		{
-			supress_repeats = 3;
+			supress_repeats = FramesToMillis(3);
 			sound_on = !(sound_on);
 			if ((sound_on) && (music_state == MUSIC_MUTED))
 			{
@@ -1310,7 +1310,7 @@ void InputHandler(int32 &x_change, int32 &y_change)
 		}
 		if (action & ControlB)
 		{
-			supress_repeats = 3;
+			supress_repeats = FramesToMillis(3);
 			if (music_state == MUSIC_ON)
 			{
 				music_state = MUSIC_OFF;
@@ -1337,7 +1337,7 @@ void InputHandler(int32 &x_change, int32 &y_change)
    if ((!(game_paused)) && (!(supress_repeats))
 	 && ((action & ControlA) || (action & ControlB) || (action & ControlC)))
 	{
-		supress_repeats = 3;
+		supress_repeats = FramesToMillis(3);
 		if (fireball.FireWeapon(icebreaker.direction))
 			new_dudemeyer_view = SHOOTING_VIEW;
 #ifdef FLIGHT_RECORDER_ON
@@ -1394,12 +1394,12 @@ void ResultsHandler(int32 &x_change, int32 &y_change)
 										         + HAZARD_X_COL_DETECT_ADJUSTMENT,
 										icebreaker.dudemeyer_object->col_detect_y
 										         + HAZARD_Y_COL_DETECT_ADJUSTMENT))
-		bogged_down_in_swamp = 6;
+		bogged_down_in_swamp = FramesToMillis(6);
 
 	if (bogged_down_in_swamp)
 	{
 		if ((x_change != 0) || (y_change != 0))
-			bogged_down_in_swamp--;
+			bogged_down_in_swamp = TickDownTimer(bogged_down_in_swamp);
 		if (x_change > 0)
 			x_change -= 0x00022500; /* i.e. 2.25 */
 		else if (x_change < 0)
@@ -1412,6 +1412,11 @@ void ResultsHandler(int32 &x_change, int32 &y_change)
 
 	morgue.MaintainMorgue();
 	successfully_moved = icebreaker.ChangeDirection();
+
+	/* Scale movement by delta-time for framerate independence */
+	x_change = ScaleByDT(x_change);
+	y_change = ScaleByDT(y_change);
+
 	if ((x_change != 0) || (y_change != 0))
 	{
 		successfully_moved = FALSE;
@@ -1545,7 +1550,7 @@ void VideoHandler()
 {
 	int32 the_way_home;
 
-	RegulateSpeed(FRAME_RATE_12_PER_SECOND);
+	UpdateDeltaTime();
 
 	/* Switch to the other screen */
 	g_screen.sc_curScreen = 1 - g_screen.sc_curScreen;
@@ -1662,8 +1667,9 @@ void PullIntoHazard(CCB *tile, int32 tile_type)
 	if (icebreaker.direction == WEST)
 		icebreaker.direction++;
 
-	while (!(GravitateTowardsPoint(icebreaker.dudemeyer_cel, 5, FIND_CENTER_X(tile),
-											 FIND_CENTER_Y(tile))))
+	while (!(GravitateTowardsPoint(icebreaker.dudemeyer_cel,
+	         (ScaleByDT(5 << 16) >> 16) < 1 ? 1 : (ScaleByDT(5 << 16) >> 16),
+	         FIND_CENTER_X(tile), FIND_CENTER_Y(tile))))
 	{
 		new_x = icebreaker.dudemeyer_cel->ccb_XPos;
 		new_y = icebreaker.dudemeyer_cel->ccb_YPos;
@@ -1762,7 +1768,7 @@ void AngelFliesAway()
 	while (ObjectVisible(angel.current_frame_ccb))
 	{
 		enemies.StillMoving();
-		RegulateSpeed(FRAME_RATE_12_PER_SECOND);
+		UpdateDeltaTime();
 		g_screen.sc_curScreen = 1 - g_screen.sc_curScreen;
 		DrawScreenCels(g_screen.sc_Screens[g_screen.sc_curScreen],black_background);
 		pavement.DisplayLandscape(FALSE);
@@ -1777,8 +1783,8 @@ void AngelFliesAway()
 
 		if (flying)
 		{
-			angel.current_frame_ccb->ccb_XPos -= (2 << 16);
-			angel.current_frame_ccb->ccb_YPos -= (4 << 16);
+			angel.current_frame_ccb->ccb_XPos -= ScaleByDT(2 << 16);
+			angel.current_frame_ccb->ccb_YPos -= ScaleByDT(4 << 16);
 			angel.DisplayFrame();
 		}
 		else
@@ -2394,7 +2400,7 @@ void ScreenSaver(void)
 	/* get the seekers to mill about until input is entered */
 	do
 	{
-		RegulateSpeed(FRAME_RATE_12_PER_SECOND);
+		UpdateDeltaTime();
 		g_screen.sc_curScreen = 1 - g_screen.sc_curScreen;
 		DrawScreenCels(g_screen.sc_Screens[g_screen.sc_curScreen],black_background);
 		enemies.MoveBoredSeekersAround();

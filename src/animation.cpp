@@ -137,7 +137,7 @@ several anim_users are playing the animation at once.
 void anim_user::AdvanceFrame(void)
 {
 	anim_source_pointer->anim_pointer->cur_Frame = current_frame_number;
-	next_frame_ccb = GetAnimCel(anim_source_pointer->anim_pointer, anim_frame_rate);
+	next_frame_ccb = GetAnimCel(anim_source_pointer->anim_pointer, ScaleByDT(anim_frame_rate));
 	current_frame_number = anim_source_pointer->anim_pointer->cur_Frame;
 	current_frame_ccb->ccb_SourcePtr = next_frame_ccb->ccb_SourcePtr;
 	current_frame_ccb->ccb_PLUTPtr   = next_frame_ccb->ccb_PLUTPtr;

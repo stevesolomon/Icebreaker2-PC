@@ -445,9 +445,9 @@ int32 MainMenuInterface(void)
 		if (action != 0)
 			HasThisMuchTimePassedYet(0,TRUE);
 		if (supress_repeats)
-			supress_repeats--;
+			supress_repeats = TickDownTimer(supress_repeats);
 
-		RegulateSpeed(FRAME_RATE_15_PER_SECOND);
+		UpdateDeltaTime();
 		g_screen.sc_curScreen = 1 - g_screen.sc_curScreen;
 		DrawScreenCels(g_screen.sc_Screens[g_screen.sc_curScreen], black_background);
 		DrawScreenCels(g_screen.sc_Screens[g_screen.sc_curScreen], background_screen);
@@ -489,7 +489,7 @@ int32 MainMenuInterface(void)
 		{
 			if (action & ControlLeft)
 			{
-				supress_repeats = 3;
+				supress_repeats = FramesToMillis(3);
 				if (choice != RED_CHOICE)
 				{
 					choice = RED_CHOICE;
@@ -498,7 +498,7 @@ int32 MainMenuInterface(void)
 			}
 			if (action & ControlRight)
 			{
-				supress_repeats = 3;
+				supress_repeats = FramesToMillis(3);
 				if (choice != PURPLE_CHOICE)
 				{
 					choice = PURPLE_CHOICE;
@@ -507,7 +507,7 @@ int32 MainMenuInterface(void)
 			}
 			if (action & ControlDown)
 			{
-				supress_repeats = 3;
+				supress_repeats = FramesToMillis(3);
 				if (choice != BLUE_CHOICE)
 				{
 					choice = BLUE_CHOICE;
@@ -516,7 +516,7 @@ int32 MainMenuInterface(void)
 			}
 			if (action & ControlUp)
 			{
-				supress_repeats = 3;
+				supress_repeats = FramesToMillis(3);
 				PlaySoundEffect(PING_SOUND);
 				switch(choice)
 				{
@@ -762,9 +762,9 @@ int32 OptionsInterface(void)
 		if (action != 0)
 			HasThisMuchTimePassedYet(0,TRUE);
 		if (supress_repeats)
-			supress_repeats--;
+			supress_repeats = TickDownTimer(supress_repeats);
 
-		RegulateSpeed(FRAME_RATE_15_PER_SECOND);
+		UpdateDeltaTime();
 		g_screen.sc_curScreen = 1 - g_screen.sc_curScreen;
 		DrawScreenCels(g_screen.sc_Screens[g_screen.sc_curScreen], black_background);
 		DrawScreenCels(g_screen.sc_Screens[g_screen.sc_curScreen], background_screen);
@@ -820,7 +820,7 @@ int32 OptionsInterface(void)
 		{
 			if (action & ControlLeft)
 			{
-				supress_repeats = 3;
+				supress_repeats = FramesToMillis(3);
 				if (choice != BLUE_CHOICE)
 				{
 					choice = BLUE_CHOICE;
@@ -829,7 +829,7 @@ int32 OptionsInterface(void)
 			}
 			if (action & ControlRight)
 			{
-				supress_repeats = 3;
+				supress_repeats = FramesToMillis(3);
 				if (choice != GREEN_CHOICE)
 				{
 					choice = GREEN_CHOICE;
@@ -838,7 +838,7 @@ int32 OptionsInterface(void)
 			}
 			if (action & ControlDown)
 			{
-				supress_repeats = 3;
+				supress_repeats = FramesToMillis(3);
 				PlaySoundEffect(PING_SOUND);
 				switch(choice)
 				{
@@ -852,7 +852,7 @@ int32 OptionsInterface(void)
 			}
 			if (action & ControlUp)
 			{
-				supress_repeats = 3;
+				supress_repeats = FramesToMillis(3);
 				PlaySoundEffect(PING_SOUND);
 				switch(choice)
 				{
@@ -907,7 +907,7 @@ int32 OptionsInterface(void)
 														STOP_THE_MUSIC;
 													}
 												}
-												supress_repeats = 3;
+												supress_repeats = FramesToMillis(3);
 												PlaySoundEffect(PING_SOUND);
 											}
 											time_to_go = FALSE;
@@ -918,7 +918,7 @@ int32 OptionsInterface(void)
 													DeleteStatusFile();
 											}
 											time_to_go = FALSE;
-											supress_repeats = 6;
+											supress_repeats = FramesToMillis(6);
 											break;
 				case GREEN_CHOICE:  	choice = GOTO_SKILL_MENU;	break;
 			}
@@ -1163,13 +1163,13 @@ int32 DisplayLevelsCompletedScreen(void)
 	time_to_go = FALSE;
 	do
 	{
-		RegulateSpeed(FRAME_RATE_15_PER_SECOND);
+		UpdateDeltaTime();
 		GetControlPad (1,FALSE,&data);
 		action = data.cped_ButtonBits;
 		if (action != 0)
 			HasThisMuchTimePassedYet(0,TRUE);
 		if (supress_repeats)
-			supress_repeats--;
+			supress_repeats = TickDownTimer(supress_repeats);
 		ConstructLevelsCompletedScreen();
 		switch (g_skill_level)
 		{
@@ -1189,7 +1189,7 @@ int32 DisplayLevelsCompletedScreen(void)
 //				FakeCompletion(32,150);
 //			}
 #endif
-			supress_repeats = 2;
+			supress_repeats = FramesToMillis(2);
 			if ((action & ControlStart) || (action & ControlX) || (action & ControlA))
 				time_to_go = TRUE;
 			if (action & ControlUp)
@@ -1580,9 +1580,9 @@ int32 SelectTutorial()
 
 	do
 	{
-		RegulateSpeed(FRAME_RATE_15_PER_SECOND);
+		UpdateDeltaTime();
 		if (supress_repeats)
-			supress_repeats--;
+			supress_repeats = TickDownTimer(supress_repeats);
 		g_screen.sc_curScreen = 1 - g_screen.sc_curScreen;
 		DrawScreenCels(g_screen.sc_Screens[g_screen.sc_curScreen], black_background);
 		DrawScreenCels(g_screen.sc_Screens[g_screen.sc_curScreen], background_screen);
@@ -1607,28 +1607,28 @@ int32 SelectTutorial()
 		{
 			if (data.cped_ButtonBits & ControlUp)
 			{
-				supress_repeats = 3;
+				supress_repeats = FramesToMillis(3);
 				if (selected_level != LESSON_1_BLUE)
 					PlaySoundEffect(PING_SOUND);
 				selected_level = LESSON_1_BLUE;
 			}
 			if (data.cped_ButtonBits & ControlRight)
 			{
-				supress_repeats = 3;
+				supress_repeats = FramesToMillis(3);
 				if (selected_level != LESSON_2_RED)
 					PlaySoundEffect(PING_SOUND);
 				selected_level = LESSON_2_RED;
 			}
 			if (data.cped_ButtonBits & ControlDown) 
 			{
-				supress_repeats = 3;
+				supress_repeats = FramesToMillis(3);
 				if (selected_level != LESSON_3_GREEN)
 					PlaySoundEffect(PING_SOUND);
 				selected_level = LESSON_3_GREEN;
 			}
 			if (data.cped_ButtonBits & ControlLeft)
 			{
-				supress_repeats = 3;
+				supress_repeats = FramesToMillis(3);
 				if (selected_level != LESSON_4_RANDOM_CHANGES)
 					PlaySoundEffect(PING_SOUND);
 				selected_level = LESSON_4_RANDOM_CHANGES;
@@ -1752,9 +1752,9 @@ int32 ChangeSkillLevel()
 
 	do
 	{
-		RegulateSpeed(FRAME_RATE_15_PER_SECOND);
+		UpdateDeltaTime();
 		if (supress_repeats)
-			supress_repeats--;
+			supress_repeats = TickDownTimer(supress_repeats);
 		g_screen.sc_curScreen = 1 - g_screen.sc_curScreen;
 		DrawScreenCels(g_screen.sc_Screens[g_screen.sc_curScreen], black_background);
 		DrawScreenCels(g_screen.sc_Screens[g_screen.sc_curScreen], background_screen);
@@ -1831,7 +1831,7 @@ int32 ChangeSkillLevel()
 			if ((data.cped_ButtonBits & ControlUp)||(data.cped_ButtonBits & ControlLeft))
 			{
 				PlaySoundEffect(PING_SOUND);
-				supress_repeats = 3;
+				supress_repeats = FramesToMillis(3);
 				display_level -= 1;
 				if (display_level < EASY)
 					display_level = INSANE;
@@ -1839,7 +1839,7 @@ int32 ChangeSkillLevel()
 			if ((data.cped_ButtonBits & ControlDown)||(data.cped_ButtonBits & ControlRight))
 			{
 				PlaySoundEffect(PING_SOUND);
-				supress_repeats = 3;
+				supress_repeats = FramesToMillis(3);
 				display_level += 1;
 				if (display_level > INSANE)
 					display_level = EASY;
@@ -1926,9 +1926,9 @@ int32 RollTheCredits()
 
 	do
 	{
-		RegulateSpeed(FRAME_RATE_15_PER_SECOND);
+		UpdateDeltaTime();
 		if (supress_repeats)
-			supress_repeats--;
+			supress_repeats = TickDownTimer(supress_repeats);
 		g_screen.sc_curScreen = 1 - g_screen.sc_curScreen;
 		DrawScreenCels(g_screen.sc_Screens[g_screen.sc_curScreen], black_background);
 		DrawScreenCels(g_screen.sc_Screens[g_screen.sc_curScreen], pages[current_page]);
@@ -1950,7 +1950,7 @@ int32 RollTheCredits()
 				i = GOTO_MAIN_MENU;
 			if ((data.cped_ButtonBits & ControlUp) || (data.cped_ButtonBits & ControlLeft))
 			{
-				supress_repeats = 3;
+				supress_repeats = FramesToMillis(3);
 				if (current_page > 0)
 				{
 					current_page--;
@@ -1959,7 +1959,7 @@ int32 RollTheCredits()
 			}
 			if ((data.cped_ButtonBits & ControlDown)||(data.cped_ButtonBits & ControlRight))
 			{
-				supress_repeats = 3;
+				supress_repeats = FramesToMillis(3);
 				if (current_page < 3)
 				{
 					current_page++;
@@ -2003,7 +2003,7 @@ int32 PlayMoviesMenu()
 	STOP_THE_MUSIC;
 	for (i = 0; i < 8; i++)
 	{
-		RegulateSpeed(FRAME_RATE_12_PER_SECOND);
+		UpdateDeltaTime();
 		GetControlPad (1,FALSE,&data);
 	}
 	i = 0;
@@ -2049,9 +2049,9 @@ int32 PlayMoviesMenu()
 	selected_movie = WELCOME_MOVIE;
 	do
 	{
-		RegulateSpeed(FRAME_RATE_12_PER_SECOND);
+		UpdateDeltaTime();
 		if (supress_repeats)
-			supress_repeats--;
+			supress_repeats = TickDownTimer(supress_repeats);
 		g_screen.sc_curScreen = 1 - g_screen.sc_curScreen;
 		DrawScreenCels(g_screen.sc_Screens[g_screen.sc_curScreen], black_background);
 		DrawScreenCels(g_screen.sc_Screens[g_screen.sc_curScreen], background_screen);
@@ -2090,7 +2090,7 @@ int32 PlayMoviesMenu()
 		{
 			if((data.cped_ButtonBits & ControlLeft) || (data.cped_ButtonBits & ControlRight))
 			{
-				supress_repeats = 3;
+				supress_repeats = FramesToMillis(3);
 				if (selected_movie < CONCRETE_MOVIE)
 					selected_movie += 9;
 				else
@@ -2099,7 +2099,7 @@ int32 PlayMoviesMenu()
 			}
 			if (data.cped_ButtonBits & ControlUp)
 			{
-				supress_repeats = 3;
+				supress_repeats = FramesToMillis(3);
 				PlaySoundEffect(PING_SOUND);
 				if (selected_movie == CONCRETE_MOVIE)
 					selected_movie = VICTORY_MOVIE;
@@ -2110,7 +2110,7 @@ int32 PlayMoviesMenu()
 			}
 			if (data.cped_ButtonBits & ControlDown)
 			{
-				supress_repeats = 3;
+				supress_repeats = FramesToMillis(3);
 				PlaySoundEffect(PING_SOUND);
 				if (selected_movie == VICTORY_MOVIE)
 					selected_movie = CONCRETE_MOVIE;
@@ -2125,7 +2125,7 @@ int32 PlayMoviesMenu()
 				STOP_THE_MUSIC;
 				for (i = 0; i < 8; i++)
 				{
-					RegulateSpeed(FRAME_RATE_12_PER_SECOND);
+					UpdateDeltaTime();
 					GetControlPad (1,FALSE,&data);
 				}
 				i = EXIT_THE_PROGRAM;
@@ -2158,7 +2158,7 @@ int32 PlayMoviesMenu()
 					START_MENU_MUSIC;
 				for (i = 0; i < 5; i++)
 				{
-					RegulateSpeed(FRAME_RATE_12_PER_SECOND);
+					UpdateDeltaTime();
 					GetControlPad (1,FALSE,&data);
 				}
 				i = EXIT_THE_PROGRAM;
@@ -2237,9 +2237,9 @@ int32 MusicMenu()
 	do
 	{
 		old_hilite_position = current_hilite_position;
-		RegulateSpeed(FRAME_RATE_15_PER_SECOND);
+		UpdateDeltaTime();
 		if (supress_repeats)
-			supress_repeats--;
+			supress_repeats = TickDownTimer(supress_repeats);
 		g_screen.sc_curScreen = 1 - g_screen.sc_curScreen;
 		DrawScreenCels(g_screen.sc_Screens[g_screen.sc_curScreen], black_background);
 		
@@ -2312,7 +2312,7 @@ int32 MusicMenu()
 				if ((music_state == MUSIC_ON) && (!standard_musical_selections))
 				{
 					PlaySoundEffect(PING_SOUND);
-					supress_repeats = 3;
+					supress_repeats = FramesToMillis(3);
 					switch (current_hilite_position)
 					{
 						case 2:	current_hilite_position = 11;	break;
@@ -2342,7 +2342,7 @@ int32 MusicMenu()
 				 || ((music_state == MUSIC_ON) && (current_hilite_position < 2)))
 				{
 					PlaySoundEffect(PING_SOUND);
-					supress_repeats = 3;
+					supress_repeats = FramesToMillis(3);
 					current_hilite_position--;
 					if (current_hilite_position < 0)
 					{
@@ -2358,7 +2358,7 @@ int32 MusicMenu()
 				 || ((music_state == MUSIC_ON) && (current_hilite_position < 1)))
 				{
 					PlaySoundEffect(PING_SOUND);
-					supress_repeats = 3;
+					supress_repeats = FramesToMillis(3);
 					current_hilite_position++;
 					if (current_hilite_position > 19)
 						current_hilite_position = 0;
@@ -2369,7 +2369,7 @@ int32 MusicMenu()
 		if ((data.cped_ButtonBits & ControlA) && (!supress_repeats))
 		{
 			PlaySoundEffect(PING_SOUND);
-			supress_repeats = 3;
+			supress_repeats = FramesToMillis(3);
 			switch (current_hilite_position)
 			{
 				case 0:	if (music_state == MUSIC_ON)

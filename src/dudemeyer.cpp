@@ -490,8 +490,8 @@ int32	x_skid, y_skid;
 	if ((ice_movement_state == FULL_THROTTLE) && (!(moved)))
 	{
 		ice_movement_state = DECCELERATING;
-		ice_delay_x = (horz_speed >> 16) - HORZ_SLIPPERYNESS;
-		ice_delay_y = (vert_speed >> 16) - VERT_SLIPPERYNESS;
+		ice_delay_x = (float)((horz_speed >> 16) - HORZ_SLIPPERYNESS);
+		ice_delay_y = (float)((vert_speed >> 16) - VERT_SLIPPERYNESS);
 	}
 
 	/*************************************************************************************/
@@ -500,8 +500,8 @@ int32	x_skid, y_skid;
 	/*************************************************************************************/
 	if (ice_movement_state == ACCELERATING)
 	{
-		x_adjustment = ice_delay_x;
-		y_adjustment = ice_delay_y;
+		x_adjustment = (int32)ice_delay_x;
+		y_adjustment = (int32)ice_delay_y;
 		if (x_adjustment > (horz_speed >> 16))
 			x_adjustment = (horz_speed >> 16);
 		if (y_adjustment > (vert_speed >> 16))
@@ -515,8 +515,8 @@ int32	x_skid, y_skid;
 			y_change -= vert_speed - (y_adjustment << 16);
 	   if (y_change < 0)
 			y_change += vert_speed - (y_adjustment << 16);
-		ice_delay_x++;
-		ice_delay_y++;
+		ice_delay_x += g_dt_seconds * BASE_GAME_FPS;
+		ice_delay_y += g_dt_seconds * BASE_GAME_FPS;
 		if ((ice_delay_x >= HORZ_SLIPPERYNESS) && (ice_delay_y >= VERT_SLIPPERYNESS))
 			ice_movement_state = FULL_THROTTLE;
 		return;
@@ -547,10 +547,10 @@ int32	x_skid, y_skid;
 		 || (direction == SOUTHEAST))
 			x_change = -(horz_speed);
 
-		x_adjustment = ice_delay_x;
+		x_adjustment = (int32)ice_delay_x;
 		if (x_adjustment < 0)
 			x_adjustment = 0;
-		y_adjustment = ice_delay_y;
+		y_adjustment = (int32)ice_delay_y;
 		if (y_adjustment < 0)
 			y_adjustment = 0;
 
@@ -582,8 +582,8 @@ int32	x_skid, y_skid;
 		}
 		/********************* we now resume normal unchanged code ************************/
 
-		ice_delay_x++;
-		ice_delay_y++;
+		ice_delay_x += g_dt_seconds * BASE_GAME_FPS;
+		ice_delay_y += g_dt_seconds * BASE_GAME_FPS;
 		if ((x_change == 0) && (y_change == 0))
 		{
 			old_ice_direction = direction;
@@ -622,10 +622,10 @@ int32	x_skid, y_skid;
 
 		x_adjustment = x_change >> 16;
 		y_adjustment = y_change >> 16;
-		x_skid = (x_skid * ice_delay_x) / HORZ_SLIPPERYNESS;
-		y_skid = (y_skid * ice_delay_y) / VERT_SLIPPERYNESS;
-		x_adjustment = (x_adjustment * (HORZ_SLIPPERYNESS-ice_delay_x)) / HORZ_SLIPPERYNESS;
-		y_adjustment = (y_adjustment * (VERT_SLIPPERYNESS-ice_delay_y)) / VERT_SLIPPERYNESS;
+		x_skid = (int32)((x_skid * ice_delay_x) / HORZ_SLIPPERYNESS);
+		y_skid = (int32)((y_skid * ice_delay_y) / VERT_SLIPPERYNESS);
+		x_adjustment = (int32)((x_adjustment * (HORZ_SLIPPERYNESS-ice_delay_x)) / HORZ_SLIPPERYNESS);
+		y_adjustment = (int32)((y_adjustment * (VERT_SLIPPERYNESS-ice_delay_y)) / VERT_SLIPPERYNESS);
 
 		if ((ABS(old_ice_direction - direction)) == 4)
 		{
@@ -638,10 +638,10 @@ int32	x_skid, y_skid;
 			y_change = (y_skid + y_adjustment) << 16;
 		}
 	
-		if (ice_delay_x)
-			ice_delay_x--;
-		if (ice_delay_y)
-			ice_delay_y--;
+		if (ice_delay_x > 0)
+			ice_delay_x -= g_dt_seconds * BASE_GAME_FPS;
+		if (ice_delay_y > 0)
+			ice_delay_y -= g_dt_seconds * BASE_GAME_FPS;
 		if ((ice_delay_x <= 0) && (ice_delay_y <= 0))
 		{
 			old_ice_direction = direction;
