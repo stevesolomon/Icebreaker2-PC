@@ -1150,7 +1150,7 @@ int32 DisplayLevelsCompletedScreen(void)
 	if ((MAXIMUM_LEVELS / 2) > MAX_LEVEL_STAT_ELEMENTS)
 		printf("Warning: More levels exist than there is space for in the stat file.\n");
 
-	{ std::string save_path = GetSaveDir() + "savegame.dat"; FILE *sfp = fopen(save_path.c_str(), "rb"); if (!sfp) { printf("Warning: no Icebreaker save file exists.\n"); memset(&stat_file, 0, sizeof(stat_file)); stat_file.developer_id = MAGNET_3D0_DEVELOPER_ID_NUMBER; } else { fread(&stat_file, 1, sizeof(stat_file), sfp); fclose(sfp); } }
+	{ ReadStatusFile(); }
 
 	if (stat_file.developer_id != MAGNET_3D0_DEVELOPER_ID_NUMBER)
 		printf("Warning: Icebreaker data file does not have proper developer id number!\n");

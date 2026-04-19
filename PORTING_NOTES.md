@@ -260,52 +260,73 @@ auto-created on first write via `SHGetFolderPath(CSIDL_APPDATA)` →
 `GetSaveDir()` in `src/platform/filesystem.cpp`. Fallback if `SHGetFolderPath`
 fails: `.\saves\`.
 
-### Format
+## Save File (NVRAM Replacement)
 
-Raw `fwrite` of one C struct — **no header, no version field, no checksum**:
+The original 3DO stored progress in 32 KB battery-backed NVRAM under the virtual
+path `$boot/NVRAM/`. The PC port writes a small versioned binary file. Implementation
+lives in `src/nvram.cpp` / `src/nvram.h`.
 
-```c
-typedef struct status_file_format {
-    int16 developer_id;          // always 1365 (MAGNET_3D0_DEVELOPER_ID_NUMBER)
-    char  level_stats[76];       // 2 levels per byte, supports up to 152 levels
-    int32 difficulty_and_tracks; // packed difficulty + music-track mask
-} status_file_format;
-```
-
-On x64/MSVC this lays out as:
-
-| Offset | Size | Field |
-|--------|------|-------|
-| 0  | 2  | `developer_id` (LE, value `0x0555` = 1365) |
-| 2  | 76 | `level_stats[0..75]` |
-| 78 | 2  | padding (alignment) |
-| 80 | 4  | `difficulty_and_tracks` (LE) |
-
-**Total file size: 84 bytes.** Endianness is host-native (little-endian on PC,
-big-endian on the original 3DO) — saves are *not* binary-compatible across
-platforms.
-
-### `level_stats[]` — Completion Bitmap
-
-Each byte tracks **two** levels. The high nibble belongs to the *odd-indexed*
-level (1, 3, 5, …); the low nibble to the *even-indexed* level (2, 4, 6, …):
+### Location
 
 ```
-Bit  Difficulty
-0x01 / 0x10   EASY
-0x02 / 0x20   MEDIUM
-0x04 / 0x40   HARD
-0x08 / 0x80   INSANE
+%APPDATA%\Icebreaker2\savegame.dat
 ```
+e.g. `C:\Users\<you>\AppData\Roaming\Icebreaker2\savegame.dat`. The directory is
+auto-created on first write via `SHGetFolderPath(CSIDL_APPDATA)` →
+`GetSaveDir()` in `src/platform/filesystem.cpp`. Fallback if `SHGetFolderPath`
+fails: `.\saves\`.
 
-Example: `level_stats[0] = 0x42` ⇒ level 1 beaten on HARD, level 2 beaten on
-MEDIUM. `stat_file.level_stats[i] & 0xF0` is "level (2i+1) ever completed?";
-`& 0x0F` is "level (2i+2) ever completed?". `MAX_LEVEL_STAT_ELEMENTS = 76`
-provides room for 152 level slots, comfortably above Icebreaker 2's 150.
+Auxiliary files in the same directory:
+- `savegame.dat.tmp` — transient; the new save is written here then renamed
+  over `savegame.dat` so a crash mid-write cannot corrupt the live file.
 
-### `difficulty_and_tracks` — Packed Settings Word
+### Format (v2)
 
-A single 32-bit word doing double duty:
+Versioned, length-prefixed, CRC32-checksummed; little-endian throughout. The
+file is **keyed by level filename**, not by integer level index, so adding,
+reordering, or renaming levels never silently corrupts existing saves. Every
+record carries a `pack_id` so the same file can hold progress for multiple
+level collections (the IB2 main game, the original Icebreaker levels, custom
+packs) without collisions.
+
+**Header (24 bytes)**
+
+| Offset | Size | Field | Notes |
+|--------|------|-------|-------|
+| 0  | 4 | `magic`                | ASCII `"IB2S"` (`0x53324249` LE) |
+| 4  | 2 | `version`              | currently `2` |
+| 6  | 2 | `header_size`          | `24`; readers must honour for forward compat |
+| 8  | 4 | `difficulty_and_tracks`| packed skill + music-track mask (see below) |
+| 12 | 4 | `record_count`         | number of `level_record` entries that follow |
+| 16 | 4 | `payload_crc32`        | CRC32 (poly `0xEDB88320`) of all bytes after this field |
+| 20 | 4 | `reserved`             | must be `0` |
+
+**Per-level record (8 bytes, repeated `record_count` times)**
+
+| Offset | Size | Field | Notes |
+|--------|------|-------|-------|
+| 0 | 4 | `level_key`        | CRC32 of canonical level filename |
+| 4 | 1 | `difficulty_mask`  | bitmask: `0x01`=EASY, `0x02`=MEDIUM, `0x04`=HARD, `0x08`=INSANE |
+| 5 | 1 | `pack_id`          | `0`=IB2 main, `1`=IB1 Classic (reserved), `2`=user/custom (reserved) |
+| 6 | 2 | `reserved`         | must be `0` |
+
+A fresh save with no completed levels is exactly **24 bytes**; with all 150
+IB2 main levels recorded it is `24 + 150*8 = 1224` bytes. There is no fixed
+upper bound — the format grows naturally as packs are added.
+
+### Canonical level keys
+
+`level_key = CRC32(canonicalise(filename))`. Canonicalisation:
+
+1. Strip a leading `$boot/` prefix (case-insensitive) if present.
+2. Replace backslashes with forward slashes.
+3. Lowercase ASCII.
+
+So `$boot/IceFiles/Newlevels/yellow_assembly` and
+`icefiles/newlevels/yellow_assembly` both hash to the same key. Public helper:
+`uint32_t LevelKeyFromFilename(const char *filename)` in `nvram.h`.
+
+### `difficulty_and_tracks` — Packed Settings Word (unchanged from v1)
 
 ```
 bits  0..17   tracks bitmask (1 bit per music track; 0x3FFFF = all 18 enabled)
@@ -318,33 +339,133 @@ bits 20..23   skill level, one-hot:
 bits 24..31   reserved (zero)
 ```
 
-On read, `tracks = stat_file.difficulty_and_tracks & 0x3FFFF`; if `tracks` is
-anything other than the all-on default `0x3FFFF`, the global
-`standard_musical_selections` flag is set to `FALSE` so the player's custom
-playlist is honoured.
+If `tracks != 0x3FFFF` after a load, `standard_musical_selections` is set to
+`FALSE` so the player's custom playlist is honoured.
 
 ### Lifecycle
 
 | Function | When called | Effect |
 |----------|-------------|--------|
-| `ReadStatusFile()` | Once at startup | Loads file; populates `tracks` and `g_skill_level`. If missing: defaults to all tracks on (`0x3FFFF`) and HARD difficulty, but does **not** create the file. |
-| `WriteStatusFile()` | Whenever difficulty or music-track selection changes | Read-modify-write: re-loads (or initialises a blank record), repacks `difficulty_and_tracks`, writes back. |
-| `SetLevelFlagInStatusRecordFile(level, mode)` | After completing any level | Read-modify-write: sets the bit for that (level, difficulty) pair, writes back. Also triggers victory-movie playback when all 30 or all 150 levels are first cleared. |
-| `CheckForVictory(level, count)` | Before recording a completion | Counts unfinished levels in the first `count` entries; returns true if the level being recorded is the very last one missing. |
-| `DeleteStatusFile()` | Reset-progress menu option | `remove()`s the file and zeros the in-memory struct. |
-| `FakeCompletion(first, last)` | Debug only | Marks a range of levels complete at random difficulties. |
-| `DumpStatusRecordFile()` | Debug only | Pretty-prints the bitmap to stdout. |
+| `ReadStatusFile()` | Once at startup | Loads file; populates `tracks` and `g_skill_level`. If missing or unrecognised: defaults to all tracks on (`0x3FFFF`) and HARD difficulty. |
+| `WriteStatusFile()` | When difficulty or music-track selection changes | Re-loads if necessary, repacks `difficulty_and_tracks`, atomically rewrites the file. |
+| `SetLevelFlagInStatusRecordFile(level, mode)` | After completing any level (legacy integer-keyed entry point) | Resolves `level` → `level_key` via a cached call to `FetchLevelName`, sets the difficulty bit on the matching `PACK_IB2_MAIN` record (creating it if absent), atomically rewrites. Triggers victory-movie playback when all 30 or all 150 levels are first cleared. |
+| `MarkLevelCompleted(key, pack_id, mode)` | Same, but for new packs whose levels aren't in the IB2 numbering scheme | Same write path as above, with caller-supplied key and pack id. |
+| `IsLevelCompleted(key, pack_id, mode)` | Generic completion query | Returns `true` iff the requested difficulty bit is set; pass `mode = 0` to mean "any difficulty". |
+| `CheckForVictory(level, count)` | Before recording a completion | Counts unfinished levels in the first `count` IB2 main entries; returns true if the level being recorded is the last one missing. |
+| `DeleteStatusFile()` | Reset-progress menu option | Deletes `savegame.dat`, zeros in-memory state. |
+| `FakeCompletion(first, last)` / `DumpStatusRecordFile()` | Debug only | Test seeding / pretty-printing. |
 
-### Quirks Worth Remembering
+### Adding a new level pack
 
-- **No versioning.** If the struct layout ever changes, old saves silently load
-  wrong values. The only sanity check is `developer_id == 1365`, and even that
-  only emits a warning from `DumpStatusRecordFile`.
-- **Read-modify-write everywhere.** Every mutation re-loads the whole file
-  before writing it back. Concurrent runs of the game would lose updates.
-- **Endianness/packing tied to host.** A save written on this Windows port is
-  not binary-compatible with the original 3DO NVRAM image.
-- **`developer_id` is set on first creation only.** `ReadStatusFile` does not
-  re-stamp it, so a corrupt or alien file won't be auto-healed.
-- **Levels are 1-indexed in the API.** `(level - 1) / 2` is the byte index;
-  `(level - 1) % 2` chooses the nibble.
+The save layer is now decoupled from `FetchLevelName`'s switch. To add the
+original Icebreaker levels (or any other pack):
+
+1. Drop the level files into `iso_assets/IceFiles/` (subfolder of your choice).
+2. Wire them into the level menu / loader. While the legacy
+   `FetchLevelName` switch is still in place, the simplest interim path is a
+   parallel manifest table indexed by a new sentinel level number range — but
+   nothing in the save layer requires this.
+3. From completion code, call
+   `MarkLevelCompleted(LevelKeyFromFilename(filename), PACK_IB1_CLASSIC, mode)`
+   instead of `SetLevelFlagInStatusRecordFile(level, mode)`. The IB2 nibble
+   view in `stat_file.level_stats[]` is untouched by non-`PACK_IB2_MAIN`
+   writes, so the existing IB2 grid renderer keeps working unchanged.
+4. The grid renderer for the new pack should query progress with
+   `IsLevelCompleted(level_key, PACK_IB1_CLASSIC, mode)` rather than reading
+   `stat_file.level_stats[]` directly.
+
+### Legacy v1 format (no longer read)
+
+The pre-port save was a raw 84-byte `fwrite` of:
+
+```c
+typedef struct status_file_format {
+    int16 developer_id;          // always 1365
+    char  level_stats[76];       // 2 levels per byte (high nibble = odd levels)
+    int32 difficulty_and_tracks;
+} status_file_format;            // padded to 84 bytes on x64/MSVC
+```
+
+Each `level_stats[i]` byte's high nibble belonged to level `2i+1`, low nibble
+to level `2i+2`, with bits `0x01/0x10`=EASY, `0x02/0x20`=MEDIUM,
+`0x04/0x40`=HARD, `0x08/0x80`=INSANE. Hard cap: 152 levels. Documented here
+for archaeological reference only — `ReadStatusFile()` does not understand or
+migrate this format. Any pre-existing 84-byte `savegame.dat` will be rejected
+with an "unrecognised format" warning and the player will start fresh; delete
+the file (or let `DeleteStatusFile` do it) to silence the warning.
+
+### Quirks worth remembering
+
+- **In-memory legacy view.** `stat_file.level_stats[]` is still kept up to
+  date as a read-only view of the `PACK_IB2_MAIN` records, because the level
+  grid renderer in `userif.cpp` reads it directly. Mutations go through the
+  record store and then `RebuildLegacyView()`. New code should prefer the
+  `IsLevelCompleted` API over poking at `stat_file` directly.
+- **Read-modify-write everywhere.** Every mutation is followed by a full
+  rewrite. Concurrent runs of the game would still lose updates.
+- **Endianness.** v2 explicitly stores everything little-endian via byte-by-byte
+  serialisation, so the file is portable across PC builds. It is *not*
+  binary-compatible with the original 3DO NVRAM image.
+- **Music-track word width.** `difficulty_and_tracks` only reserves 18 bits
+  (0..17) for the music-track mask. If the soundtrack ever grows past 18
+  tracks, bump `version` and widen the field — the rest of the format
+  (header_size + per-record packing) was designed to accommodate that without
+  breaking parsers.
+- **Atomic write but no fsync.** `SaveToDisk` writes to `savegame.dat.tmp` and
+  renames over the live file, so a crash mid-write leaves the previous good
+  copy intact. There is no explicit `fsync`/`FlushFileBuffers` on the
+  directory handle, so a hard power loss between the rename and the
+  filesystem flushing its journal could still lose the last write.
+
+## Input Mapping (Keyboard & Gamepad)
+
+The original 3DO control pad's button bits (`ControlUp`, `ControlA`, …) are
+synthesised every frame by the platform layer in `src/platform/input.cpp`
+from both keyboard state (`SDL_GetKeyboardState`) and, if connected, an
+SDL2 game controller. Both sources are OR'd together each frame, so a
+gamepad and the keyboard work simultaneously.
+
+### Keyboard
+
+| 3DO button         | Key(s)                  | In-game role |
+|--------------------|-------------------------|--------------|
+| `ControlUp`        | `W` or `↑`              | Aim/move up, menu up |
+| `ControlDown`      | `S` or `↓`              | Aim/move down, menu down |
+| `ControlLeft`      | `A` or `←`              | Aim/move left, menu left |
+| `ControlRight`     | `D` or `→`              | Aim/move right, menu right |
+| `ControlA`         | `Space` or `Z`          | Fire / confirm |
+| `ControlB`         | `X`                     | Secondary action |
+| `ControlC`         | `C`                     | Tertiary action |
+| `ControlX`         | `V`                     | Cancel / back |
+| `ControlStart`     | `Enter` or `Esc`        | Start / pause / advance prompt |
+| `ControlLeftShift` | `Left Shift`            | Modifier (e.g. screensaver combo) |
+| `ControlRightShift`| `Right Shift`           | Modifier (e.g. screensaver combo) |
+
+### Gamepad (SDL2 GameController)
+
+| 3DO button          | Gamepad input |
+|---------------------|--------------|
+| `ControlUp/Down/Left/Right` | D-pad, or left analog stick (with deadzone) |
+| `ControlA`          | A button (Xbox A / PS ✕) |
+| `ControlB`          | B button (Xbox B / PS ○) |
+| `ControlX`          | X button (Xbox X / PS □) |
+| `ControlStart`      | Start / Menu / Options |
+| `ControlLeftShift`  | Left shoulder (LB / L1) |
+| `ControlRightShift` | Right shoulder (RB / R1) |
+
+`ControlC` has no dedicated gamepad mapping — there is no fourth face button
+in SDL's standard controller abstraction in current use. Bind `C` on the
+keyboard if a level/menu calls for it.
+
+### Notes
+
+- All bindings are hard-coded in `src/platform/input.cpp` (`UpdateButtonState`).
+  There is no rebinding UI or config file yet.
+- ESC and Enter both produce `ControlStart`; this is intentional so users on
+  laptops without a dedicated Enter on the numpad can still advance prompts.
+- Holding both shift keys (`L+R`) is the historical 3DO chord for the
+  screensaver. The keyboard mapping passes the bits through correctly; if
+  the in-game feature feels unresponsive, the cause is in the consumer
+  (`userif.cpp`'s screensaver detection logic), not the platform layer.
+- The window also processes standard SDL events: closing the window or
+  pressing `Alt+F4` cleanly exits the program.
