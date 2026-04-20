@@ -36,6 +36,7 @@ class anim_user
 		void 			ChangeArt (anim_source *original);
 		void			PositionAnim (int32 x_position, int32 y_position);
 		void			AdvanceFrame (void);
+		void			SetFrame (int32 frame_index);
 		void			RefetchFrame (void);
 		void			DisplayFrame (void);
 		void			Restart (void);

@@ -75,14 +75,15 @@ void StartBgndMusic(unsigned long track_id)
     StopBackgroundMusic();
 
     const char *filename = g_track_files[track_id];
-    g_current_music = Mix_LoadMUS(filename);
+    std::string resolved = TranslatePath(filename);
+    g_current_music = Mix_LoadMUS(resolved.c_str());
     if (!g_current_music) {
-        SDL_Log("StartBgndMusic: Failed to load '%s': %s", filename, Mix_GetError());
+        SDL_Log("StartBgndMusic: Failed to load '%s': %s", resolved.c_str(), Mix_GetError());
         return;
     }
 
     if (Mix_PlayMusic(g_current_music, -1) != 0) {
-        SDL_Log("StartBgndMusic: Failed to play '%s': %s", filename, Mix_GetError());
+        SDL_Log("StartBgndMusic: Failed to play '%s': %s", resolved.c_str(), Mix_GetError());
         Mix_FreeMusic(g_current_music);
         g_current_music = nullptr;
         return;
@@ -285,14 +286,35 @@ int32 PlayVideoStream(int position)
         return 0;
     }
 
-    MoviePlayer mp;
-    if (!MovieLoad(&mp, movie_filenames[position])) {
-        return 0;
+    /* Halt any SDL_mixer music before we open a second SDL audio device for
+     * movie audio — opening two audio devices simultaneously on PulseAudio
+     * has been observed to corrupt the heap on the PortMaster build. */
+    bool was_playing_music = Mix_PlayingMusic() && !Mix_PausedMusic();
+    if (was_playing_music) {
+        Mix_PauseMusic();
     }
 
+    /* Save and clear the render target. The graphics layer normally renders
+     * cels into an off-screen framebuffer texture; SDL_RenderPresent against
+     * a texture render target is undefined, so point at the window backbuffer
+     * for the duration of the movie and restore afterwards. */
     SDL_Renderer *renderer = GetRenderer();
-    int result = MoviePlay(&mp, renderer);
-    MovieFree(&mp);
+    SDL_Texture *saved_target = renderer ? SDL_GetRenderTarget(renderer) : nullptr;
+    if (renderer) SDL_SetRenderTarget(renderer, nullptr);
+
+    MoviePlayer mp;
+    std::string resolved = TranslatePath(movie_filenames[position]);
+    int result = 0;
+    if (MovieLoad(&mp, resolved.c_str())) {
+        result = MoviePlay(&mp, renderer);
+        MovieFree(&mp);
+    }
+
+    if (renderer) SDL_SetRenderTarget(renderer, saved_target);
+
+    if (was_playing_music) {
+        Mix_ResumeMusic();
+    }
 
     return result;
 }

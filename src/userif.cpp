@@ -450,7 +450,7 @@ int32 MainMenuInterface(void)
 	anim_user				main_menu_purple;
 	int32						choice, old_choice;
 	//int32 pre_total,post_total;
-	
+
 	DisplaySplashScreen(PLEASE_WAIT_CEL);
 
 	ShutdownAllLevelSpecificArtwork();
@@ -539,8 +539,15 @@ int32 MainMenuInterface(void)
 		g_screen.sc_curScreen = 1 - g_screen.sc_curScreen;
 		DrawScreenCels(g_screen.sc_Screens[g_screen.sc_curScreen], black_background);
 		DrawScreenCels(g_screen.sc_Screens[g_screen.sc_curScreen], background_screen);
-		while ((main_menu_dudemeyer.current_frame_number >> 16) != choice)
-			main_menu_dudemeyer.AdvanceFrame();
+		/* Seek the dudemeyer animation directly to the frame matching the
+		 * current choice. The original 3DO code spun a `while ((frame>>16)
+		 * != choice) AdvanceFrame()` loop here, which on platforms with
+		 * variable delta-time scaling can skip over the target frame and
+		 * then loop forever (since each AdvanceFrame jumps by g_dt_scale,
+		 * not exactly 1). Snap to the target instead. */
+		if ((main_menu_dudemeyer.current_frame_number >> 16) != choice) {
+			main_menu_dudemeyer.SetFrame(choice);
+		}
 		main_menu_dudemeyer.DisplayFrame();
 		switch (choice)
 		{
@@ -631,7 +638,7 @@ int32 MainMenuInterface(void)
 												choice = GOTO_SELF_PLAY_MODE;
 											break;
 				case YELLOW_CHOICE:	
-#ifdef TESTING
+#ifdef IB2_DEV_FEATURES
 											choice = PLAY_A_RANDOM_LEVEL;
 #else
 											DisplayMessageScreen(NOT_AVAILABLE_CEL);

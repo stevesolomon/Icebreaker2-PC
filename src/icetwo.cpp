@@ -455,23 +455,31 @@ bool BootIcebreaker(void)
 		success = FALSE;
 		
 	/***** Before doing anything, display the 3DO logo (because we have to) *****/
+	SDL_Log("BootIcebreaker: loading BACKGROUND_IMAGE");
 	black_background = LoadCel(BACKGROUND_IMAGE,MEMTYPE_CEL);
 	if (black_background == NULL)
 	{
 		printf("Yikes! Couldn't load the black background.\n");
 		return(FALSE);
 	}
+	SDL_Log("BootIcebreaker: showing 3DO logo splash");
 	DisplaySplashScreen(THREEDO_LOGO);
 
 #define INCLUDE_PRE_GAME_MENU 1
 #ifdef  INCLUDE_PRE_GAME_MENU
+	SDL_Log("BootIcebreaker: entering PreGameMenu");
 	PreGameMenu();
+	SDL_Log("BootIcebreaker: PreGameMenu returned");
 #endif
 
+	SDL_Log("BootIcebreaker: showing Icebreaker splash");
 	DisplaySplashScreen(ICEBREAKER_SPLASH);
 
+	SDL_Log("BootIcebreaker: BootLandscape");
 	pavement.BootLandscape();
+	SDL_Log("BootIcebreaker: BootSolids");
 	population.BootSolids();
+	SDL_Log("BootIcebreaker: BootSeekers");
 	enemies.BootSeekers();
 
 #ifdef USE_UNDERWATER_EFFECTS
@@ -480,8 +488,10 @@ bool BootIcebreaker(void)
 
 	/***** Set up structures for text display handling *****/
 	// Allocate memory for the FontHandler class
+	SDL_Log("BootIcebreaker: creating FontHandler");
 	cFontHandlerPtr = new(C_FontHandler);
 
+	SDL_Log("BootIcebreaker: allocating %d text cels", MAX_TEXT_CELS);
 	for (i = 0; i < MAX_TEXT_CELS; i++)
 	{
 		text_cel_ptr[i] = new(CCB);
@@ -493,8 +503,9 @@ bool BootIcebreaker(void)
 			success = FALSE;
 		}
 	}
+	SDL_Log("BootIcebreaker: text cels done");
 
-#ifdef TESTING
+#ifdef IB2_DEV_FEATURES
 	DrawScreenCels(g_screen.sc_Screens[g_screen.sc_curScreen],
 		            LoadIcebreakerTextIntoCel(VERSION_TEXT, -1, 200));			
 #endif
@@ -2453,6 +2464,19 @@ int main()
 {
 	int32	whats_next;
 
+	/* Unbuffer stdout so printf() output isn't lost on crash. The launcher
+	 * redirects to a non-tty (tee), which makes stdout block-buffered by
+	 * default — that hides every printf preceding a segfault. */
+	setvbuf(stdout, NULL, _IOLBF, 0);
+	setvbuf(stderr, NULL, _IOLBF, 0);
+
+	/* Initialise filesystem FIRST, before any asset/save load. The PortMaster
+	 * launcher exports IB2_ASSETS_DIR and IB2_SAVE_DIR; on the desktop builds
+	 * we fall back to SDL_GetBasePath() and the platform's user-data dir. */
+	InitFilesystem();
+	SDL_Log("== Icebreaker 2 PC port build %s %s ==", __DATE__, __TIME__);
+	SDL_Log("== assets dir: %s ==", GetAssetsDir());
+
 	vbl = GetVBLIOReq();
 	level = FIRST_LEVEL;
 	total_games = 0;
@@ -2470,13 +2494,18 @@ int main()
 	if (!(BootIcebreaker()))
 		exit(0);
 
+	SDL_Log("main: BootIcebreaker complete, creating initial NVRAM record");
 	/* This call is intended simply to create the NVRAM file if it doesn't exist: */
 	SetLevelFlagInStatusRecordFile(-1,EASY);
 
 #ifndef TESTING
+	SDL_Log("main: playing welcome movie");
 	PlayVideoStream(WELCOME_MOVIE);
+	SDL_Log("main: welcome movie done");
 #endif
+	SDL_Log("main: starting menu music");
 	START_MENU_MUSIC;
+	SDL_Log("main: entering main loop");
 	
 	if (!faded)
 		FadeToBlack(&g_screen, 40);

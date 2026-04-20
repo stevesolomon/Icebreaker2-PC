@@ -95,8 +95,10 @@ int C_FontHandler::CreateCelFromFont(char *fontFileName)
 
     if (numTextCels == 0)
     {
-        /* Open the TTF font */
-        gFont = TTF_OpenFont("assets/MetaArt/Helvetica.ttf", DEFAULT_FONT_SIZE);
+        /* Open the TTF font (route through TranslatePath so it honors
+         * IB2_ASSETS_DIR and POSIX case-insensitive resolution). */
+        std::string font_path = TranslatePath("assets/MetaArt/Helvetica.ttf");
+        gFont = TTF_OpenFont(font_path.c_str(), DEFAULT_FONT_SIZE);
         if (!gFont)
         {
             printf("ERROR - TTF_OpenFont() failed: %s\n", TTF_GetError());
@@ -318,7 +320,8 @@ TTF_Font *C_FontHandler::GetFontAtSize(int ptSize)
             return gAltFonts[i];
     }
 
-    TTF_Font *f = TTF_OpenFont("assets/MetaArt/Helvetica.ttf", ptSize);
+    std::string alt_font_path = TranslatePath("assets/MetaArt/Helvetica.ttf");
+    TTF_Font *f = TTF_OpenFont(alt_font_path.c_str(), ptSize);
     if (!f)
     {
         printf("WARN - TTF_OpenFont(size=%d) failed: %s\n", ptSize, TTF_GetError());

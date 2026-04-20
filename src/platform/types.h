@@ -88,9 +88,16 @@ struct Bitmap {
 typedef int32_t VDLEntry;
 
 /* ── 3DO timeval (microsecond timer — NOT the POSIX timeval) ─────────────── */
+#ifdef _WIN32
 struct timeval {
     int32 tv_sec;
     int32 tv_usec;
 };
+#else
+/* On POSIX systems, use the system timeval (layout-compatible: tv_sec,
+ * tv_usec). Avoids a redefinition clash when any TU pulls in <sys/time.h>
+ * via the C++ standard library. */
+#include <sys/time.h>
+#endif
 
 #endif /* PLATFORM_TYPES_H */

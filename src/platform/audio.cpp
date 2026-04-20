@@ -30,11 +30,22 @@ bool InitAudioSystem(void)
         return false;
     }
 
+    const char *driver = SDL_GetCurrentAudioDriver();
+    SDL_Log("InitAudioSystem: SDL audio driver = %s", driver ? driver : "(none)");
+
     /* 22050 Hz matches typical 3DO audio sample rates; 2048 buffer for low latency */
     if (Mix_OpenAudio(22050, MIX_DEFAULT_FORMAT, 2, 2048) != 0) {
-        SDL_Log("Mix_OpenAudio failed: %s", Mix_GetError());
-        return false;
+        SDL_Log("Mix_OpenAudio failed: %s — retrying with 44100/mono/4096", Mix_GetError());
+        if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 1, 4096) != 0) {
+            SDL_Log("Mix_OpenAudio retry failed: %s", Mix_GetError());
+            return false;
+        }
     }
+
+    int freq = 0, channels = 0;
+    Uint16 format = 0;
+    Mix_QuerySpec(&freq, &format, &channels);
+    SDL_Log("InitAudioSystem: opened %d Hz, %d channels, format=0x%x", freq, channels, format);
 
     Mix_AllocateChannels(16); /* 16 mixing channels */
 

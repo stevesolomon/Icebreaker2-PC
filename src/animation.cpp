@@ -144,6 +144,23 @@ void anim_user::AdvanceFrame(void)
 	current_frame_ccb->texture       = next_frame_ccb->texture;
 }
 
+/******************************  anim_user::SetFrame  ************************************
+   Snap the animation directly to a specific integer frame index. Useful when game logic
+expects to land on an exact frame and the dt-scaled AdvanceFrame loop could otherwise
+skip past the target on platforms with variable frame timing.
+*****************************************************************************************/
+
+void anim_user::SetFrame(int32 frame_index)
+{
+	current_frame_number = frame_index << 16;
+	anim_source_pointer->anim_pointer->cur_Frame = current_frame_number;
+	next_frame_ccb = GetAnimCel(anim_source_pointer->anim_pointer, 0);
+	current_frame_number = anim_source_pointer->anim_pointer->cur_Frame;
+	current_frame_ccb->ccb_SourcePtr = next_frame_ccb->ccb_SourcePtr;
+	current_frame_ccb->ccb_PLUTPtr   = next_frame_ccb->ccb_PLUTPtr;
+	current_frame_ccb->texture       = next_frame_ccb->texture;
+}
+
 /****************************  anim_user::RefetchFrame  *********************************
    This function is similar to AdvanceFrame; however, it does everything except advance
 the frame. It can be used in cases where the animation source has changed and the user

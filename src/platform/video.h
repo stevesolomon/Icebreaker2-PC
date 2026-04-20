@@ -105,6 +105,29 @@ static inline bool MovieLoad(MoviePlayer *mp, const char *filename)
     mp->header.audio_data_off  = vid_r32(d + 24);
     mp->header.audio_data_size = vid_r32(d + 28);
 
+    /* Sanity-check header offsets against the file size so we don't read
+     * (or, worse, queue) past the end of the loaded buffer. */
+    uint64_t audio_end = (uint64_t)mp->header.audio_data_off +
+                         (uint64_t)mp->header.audio_data_size;
+    if (audio_end > mp->file_size) {
+        SDL_Log("MovieLoad: audio range %u..%llu exceeds file size %u; clamping",
+                mp->header.audio_data_off,
+                (unsigned long long)audio_end, mp->file_size);
+        mp->header.audio_data_size = (mp->header.audio_data_off > mp->file_size)
+            ? 0u
+            : mp->file_size - mp->header.audio_data_off;
+    }
+    if ((uint64_t)mp->header.frame_table_off + 8ull * mp->header.frame_count > mp->file_size) {
+        SDL_Log("MovieLoad: frame table %u..%llu exceeds file size %u; aborting",
+                mp->header.frame_table_off,
+                (unsigned long long)((uint64_t)mp->header.frame_table_off +
+                                     8ull * mp->header.frame_count),
+                mp->file_size);
+        free(mp->file_data);
+        mp->file_data = nullptr;
+        return false;
+    }
+
     /* Parse frame table */
     mp->frame_table = (IcmFrameEntry *)malloc(mp->header.frame_count * sizeof(IcmFrameEntry));
     if (!mp->frame_table) {
@@ -185,7 +208,9 @@ static inline int MoviePlay(MoviePlayer *mp, SDL_Renderer *renderer)
     want.samples = 4096;
     want.callback = nullptr; /* use queue */
 
-    mp->audio_dev = SDL_OpenAudioDevice(nullptr, 0, &want, &have, 0);
+    mp->audio_dev = SDL_OpenAudioDevice(nullptr, 0, &want, &have,
+        SDL_AUDIO_ALLOW_FREQUENCY_CHANGE | SDL_AUDIO_ALLOW_FORMAT_CHANGE |
+        SDL_AUDIO_ALLOW_CHANNELS_CHANGE);
     if (mp->audio_dev) {
         /* Queue all audio at once */
         const uint8_t *audio_ptr = mp->file_data + mp->header.audio_data_off;

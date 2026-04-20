@@ -23,6 +23,10 @@ static const int SCALE_FACTOR   = 3;
 
 bool InitGraphics(ScreenCtx *sc, int num_pages)
 {
+    /* InitFilesystem is called from main() before any asset load. We DO NOT
+     * call it from here — by the time graphics init runs, ReadStatusFile and
+     * other early-startup paths have already touched the filesystem. */
+
     if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0) {
         SDL_Log("SDL_InitSubSystem(VIDEO) failed: %s", SDL_GetError());
         return false;
@@ -33,21 +37,58 @@ bool InitGraphics(ScreenCtx *sc, int num_pages)
         return false;
     }
 
+    /* On PortMaster handhelds the launcher exports IB2_FULLSCREEN=1 so the
+     * window matches the device's native panel rather than appearing as a
+     * tiny scaled rect. Desktop builds default to a windowed 3x scale. */
+    bool want_fullscreen = false;
+    const char *fs_env = std::getenv("IB2_FULLSCREEN");
+    if (fs_env && *fs_env && *fs_env != '0') {
+        want_fullscreen = true;
+    }
+
+    Uint32 win_flags = SDL_WINDOW_SHOWN;
+    if (want_fullscreen) {
+        /* FULLSCREEN_DESKTOP keeps the desktop's resolution and lets
+         * SDL_RenderSetLogicalSize do the scaling — the right mode for
+         * handhelds and avoids any modeset failure. */
+        win_flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+    } else {
+        win_flags |= SDL_WINDOW_RESIZABLE;
+    }
+
     g_window = SDL_CreateWindow(
         "Icebreaker 2",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         LOGICAL_WIDTH * SCALE_FACTOR, LOGICAL_HEIGHT * SCALE_FACTOR,
-        SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE
+        win_flags
     );
     if (!g_window) {
         SDL_Log("SDL_CreateWindow failed: %s", SDL_GetError());
         return false;
     }
 
+    /* Hide the host mouse cursor — irrelevant on handhelds and distracting
+     * on desktop fullscreen. Reverted automatically when we DestroyWindow. */
+    if (want_fullscreen) {
+        SDL_ShowCursor(SDL_DISABLE);
+    }
+
+    /* Try the fastest renderer first, then degrade. On some Mali drivers
+     * accelerated+vsync fails to initialize; software always works. */
     g_renderer = SDL_CreateRenderer(g_window, -1,
         SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (!g_renderer) {
-        SDL_Log("SDL_CreateRenderer failed: %s", SDL_GetError());
+        SDL_Log("SDL_CreateRenderer(accelerated+vsync) failed: %s — retrying without vsync",
+                SDL_GetError());
+        g_renderer = SDL_CreateRenderer(g_window, -1, SDL_RENDERER_ACCELERATED);
+    }
+    if (!g_renderer) {
+        SDL_Log("SDL_CreateRenderer(accelerated) failed: %s — falling back to software",
+                SDL_GetError());
+        g_renderer = SDL_CreateRenderer(g_window, -1, SDL_RENDERER_SOFTWARE);
+    }
+    if (!g_renderer) {
+        SDL_Log("SDL_CreateRenderer(software) failed: %s", SDL_GetError());
         SDL_DestroyWindow(g_window);
         g_window = nullptr;
         return false;
@@ -70,7 +111,16 @@ bool InitGraphics(ScreenCtx *sc, int num_pages)
             SDL_TEXTUREACCESS_TARGET,
             LOGICAL_WIDTH, LOGICAL_HEIGHT);
         sc->sc_Screens[i] = sc->framebuffers[i];
+        if (sc->framebuffers[i]) {
+            /* Pre-clear to opaque black so the first present isn't garbage,
+             * and enable blending so PIXC alpha cels composite correctly. */
+            SDL_SetTextureBlendMode(sc->framebuffers[i], SDL_BLENDMODE_BLEND);
+            SDL_SetRenderTarget(g_renderer, sc->framebuffers[i]);
+            SDL_SetRenderDrawColor(g_renderer, 0, 0, 0, 255);
+            SDL_RenderClear(g_renderer);
+        }
     }
+    SDL_SetRenderTarget(g_renderer, nullptr);
 
     g_screenCtx = sc;
     return true;
@@ -182,7 +232,14 @@ static uint8 PixcToAlpha(uint32 pixc)
 
 void DrawScreenCels(Screen *screen, CCB *cel_list)
 {
-    (void)screen; /* we always render to the current renderer target */
+    /* Target the page's framebuffer texture so draws persist across
+     * subsequent SDL_RenderPresent calls (the back buffer is discarded
+     * after present on most drivers). The 3DO model expects the screen
+     * page contents to persist until the game explicitly clears them. */
+    SDL_Texture *target = (SDL_Texture *)screen;
+    if (target) {
+        SDL_SetRenderTarget(g_renderer, target);
+    }
 
     CCB *cel = cel_list;
     while (cel) {
@@ -207,20 +264,41 @@ void DrawScreenCels(Screen *screen, CCB *cel_list)
         if (cel->ccb_Flags & CCB_LAST) break;
         cel = cel->ccb_NextPtr;
     }
+
+    if (target) {
+        SDL_SetRenderTarget(g_renderer, nullptr);
+    }
 }
 
 void DisplayScreen(Screen *screen, int field)
 {
-    (void)screen;
     (void)field;
+    /* Composite the page's framebuffer texture to the window backbuffer
+     * and present. Logical-size scaling handles any window→game-coords
+     * stretching. */
+    SDL_Texture *target = (SDL_Texture *)screen;
+    SDL_SetRenderTarget(g_renderer, nullptr);
+    SDL_SetRenderDrawColor(g_renderer, 0, 0, 0, 255);
+    SDL_RenderClear(g_renderer);
+    if (target) {
+        SDL_RenderCopy(g_renderer, target, nullptr, nullptr);
+    }
     SDL_RenderPresent(g_renderer);
 }
 
 void ClearScreen(ScreenCtx *sc)
 {
-    (void)sc;
-    SDL_SetRenderDrawColor(g_renderer, 0, 0, 0, 255);
-    SDL_RenderClear(g_renderer);
+    if (!sc) return;
+    /* Clear both framebuffer pages so the next draw starts from black
+     * regardless of which page is current. */
+    for (int i = 0; i < 2; i++) {
+        if (sc->framebuffers[i]) {
+            SDL_SetRenderTarget(g_renderer, sc->framebuffers[i]);
+            SDL_SetRenderDrawColor(g_renderer, 0, 0, 0, 255);
+            SDL_RenderClear(g_renderer);
+        }
+    }
+    SDL_SetRenderTarget(g_renderer, nullptr);
 }
 
 /* ── Effects ─────────────────────────────────────────────────────────────── */
@@ -229,8 +307,10 @@ void FadeToBlack(ScreenCtx *sc, int32 frames)
 {
     if (!sc || !sc->renderer) return;
     (void)frames;
-    /* Simple immediate blackout — animated fade requires re-rendering the
-       scene each frame, which we don't have access to here. */
+    /* Clear both framebuffer pages and present a black frame.
+     * Animated fade requires per-frame compositing that's not yet wired up. */
+    ClearScreen(sc);
+    SDL_SetRenderTarget(sc->renderer, nullptr);
     SDL_SetRenderDrawColor(sc->renderer, 0, 0, 0, 255);
     SDL_RenderClear(sc->renderer);
     SDL_RenderPresent(sc->renderer);
@@ -240,9 +320,8 @@ void FadeFromBlack(ScreenCtx *sc, int32 frames)
 {
     (void)sc;
     (void)frames;
-    /* No-op: the scene was already drawn and presented before this call.
-       Animated fade-from-black requires a render-target snapshot, which
-       we'll implement later. */
+    /* No-op: the scene was already drawn into the page texture and
+     * presented before this call. */
 }
 
 void CenterCelOnScreen(CCB *cel)
@@ -262,10 +341,17 @@ int32 GetVRAMIOReq(void)
 void SetVRAMPages(int32 ioreq, void *buffer, int32 value, int32 pages, int32 mask)
 {
     (void)ioreq; (void)buffer; (void)value; (void)pages; (void)mask;
-    /* On PC, clearing the screen is done via SDL_RenderClear */
-    if (g_renderer) {
-        SDL_SetRenderDrawColor(g_renderer, 0, 0, 0, 255);
-        SDL_RenderClear(g_renderer);
+    /* On 3DO this cleared the screen page; on PC we clear both framebuffer
+     * textures so subsequent draws start from black on either page. */
+    if (g_renderer && g_screenCtx) {
+        for (int i = 0; i < 2; i++) {
+            if (g_screenCtx->framebuffers[i]) {
+                SDL_SetRenderTarget(g_renderer, g_screenCtx->framebuffers[i]);
+                SDL_SetRenderDrawColor(g_renderer, 0, 0, 0, 255);
+                SDL_RenderClear(g_renderer);
+            }
+        }
+        SDL_SetRenderTarget(g_renderer, nullptr);
     }
 }
 

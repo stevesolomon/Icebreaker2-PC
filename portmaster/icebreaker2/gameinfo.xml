@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<gameList>
+  <game>
+    <path>./Icebreaker 2.sh</path>
+    <name>Icebreaker 2</name>
+    <desc>Icebreaker 2 is the spiritual successor to the 1995 Panasonic 3DO action-puzzle classic by Magnet Interactive Studios. Slide your tetrahedron around isometric arenas, trigger chain reactions, and shatter every breakable pyramid before the seekers shatter you. This port revives the original 3DO release with native SDL2 graphics, audio and gamepad support, plus the bundled Icebreaker 1 level pack.</desc>
+    <releasedate>19961231T000000</releasedate>
+    <developer>Magnet Interactive Studios</developer>
+    <publisher>Panasonic</publisher>
+    <genre>Arcade / Puzzle</genre>
+    <image>./icebreaker2/screenshot.png</image>
+  </game>
+</gameList>

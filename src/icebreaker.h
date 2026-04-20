@@ -13,8 +13,16 @@
 
 #define VERSION    "6.6"
 
-/* this line is to be removed before the final delivery: */
-#define TESTING 1
+/* Was used during 3DO development for debug shortcuts and a deliberate
+ * crash-on-X test path; the original source comment was "this line is to
+ * be removed before the final delivery". Disabled for the PC/PortMaster
+ * port so X in the main menu doesn't intentionally segfault. */
+/* #define TESTING 1 */
+
+/* Subset of the original TESTING gates kept for the PC/PortMaster port.
+ * Currently enables: yellow main-menu choice plays a random level instead
+ * of "Not Available", and the version number is drawn on the boot splash. */
+#define IB2_DEV_FEATURES 1
 
 /****************************** Artwork descriptors *************************************/
 

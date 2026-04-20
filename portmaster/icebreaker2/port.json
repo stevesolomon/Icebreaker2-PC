@@ -1,0 +1,35 @@
+{
+    "version": 2,
+    "name": "icebreaker2.zip",
+    "items": [
+        "Icebreaker 2.sh",
+        "icebreaker2"
+    ],
+    "items_opt": null,
+    "attr": {
+        "title": "Icebreaker 2",
+        "desc": "Icebreaker 2 is the spiritual successor to the 1995 Panasonic 3DO action-puzzle classic by Magnet Interactive Studios. Slide your tetrahedron around isometric arenas, trigger chain reactions, and shatter every breakable pyramid before the seekers shatter you. This port revives the original 3DO release of Icebreaker 2 with native SDL2 graphics, audio and gamepad support, plus the bundled Icebreaker 1 level pack.",
+        "inst": "Copy 'Icebreaker 2.sh' and the 'icebreaker2' folder to your device's ports directory. The full asset set is included; no original disc required.",
+        "genres": [
+            "arcade",
+            "puzzle"
+        ],
+        "porter": [
+            "stevesolomon"
+        ],
+        "thanks": [
+            "Magnet Interactive Studios",
+            "Andy Eddy",
+            "Panasonic"
+        ],
+        "image": {
+            "screenshot": "screenshot.png"
+        },
+        "rtr": true,
+        "runtime": null,
+        "reqs": [],
+        "arch": [
+            "aarch64"
+        ]
+    }
+}

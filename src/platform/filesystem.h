@@ -18,6 +18,12 @@ std::string TranslatePath(const char *threedo_path);
 /* Get the base assets directory */
 const char *GetAssetsDir(void);
 
+/* Initialise filesystem state. Resolves the assets directory to an
+ * absolute path (relative to the executable, via SDL_GetBasePath, with
+ * IB2_ASSETS_DIR env override). MUST be called once before any asset
+ * load — the SDL platform layer wires this in early. */
+void InitFilesystem(void);
+
 /* Get the save data directory (%APPDATA%/Icebreaker2/) */
 std::string GetSaveDir(void);
 

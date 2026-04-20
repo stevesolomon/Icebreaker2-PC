@@ -1,0 +1,8 @@
+/mnt/e/Programming Projects/3do-icebreaker2/build-aarch64/CMakeFiles/Icebreaker2.dir
+/mnt/e/Programming Projects/3do-icebreaker2/build-aarch64/CMakeFiles/sync_assets.dir
+/mnt/e/Programming Projects/3do-icebreaker2/build-aarch64/CMakeFiles/edit_cache.dir
+/mnt/e/Programming Projects/3do-icebreaker2/build-aarch64/CMakeFiles/rebuild_cache.dir
+/mnt/e/Programming Projects/3do-icebreaker2/build-aarch64/CMakeFiles/list_install_components.dir
+/mnt/e/Programming Projects/3do-icebreaker2/build-aarch64/CMakeFiles/install.dir
+/mnt/e/Programming Projects/3do-icebreaker2/build-aarch64/CMakeFiles/install/local.dir
+/mnt/e/Programming Projects/3do-icebreaker2/build-aarch64/CMakeFiles/install/strip.dir

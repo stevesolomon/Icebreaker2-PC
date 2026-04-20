@@ -38,8 +38,10 @@ Run BOTH of the following after every change, in order:
 cmd /c "cd /d ""E:\Programming Projects\3do-icebreaker2"" && ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat"" -arch=amd64 >nul && ""C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"" --build build 2>&1"
 ```
 
-2. **Force-sync assets** (the POST_BUILD copy is skipped when ninja reports
-   "no work to do", which happens for asset-only changes):
+2. **Force-sync assets** — usually unnecessary now that `CMakeLists.txt`
+   declares `add_custom_target(sync_assets ALL ...)` which copies
+   `assets/` → `build/assets/` on **every** build (even when ninja reports
+   "no work to do"). If you ever need to sync manually:
 
 ```powershell
 cmd /c """C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"" -E copy_directory ""E:\Programming Projects\3do-icebreaker2\assets"" ""E:\Programming Projects\3do-icebreaker2\build\assets"""

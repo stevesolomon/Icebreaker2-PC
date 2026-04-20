@@ -1,4 +1,56 @@
-# Porting Notes — Icebreaker 2 (3DO → Windows/SDL2)
+# Porting Notes — Icebreaker 2 (3DO → Windows + Linux/PortMaster SDL2)
+
+## Supported targets
+
+| Target                      | Build dir         | Toolchain                                  |
+| --------------------------- | ----------------- | ------------------------------------------ |
+| Windows 11 (x64)            | `build/`          | MSVC 2022, vendored SDL2 in `third_party/` |
+| Linux x86_64 (desktop / WSL) | `build-linux/`    | system gcc + `libsdl2-{,image,mixer,ttf}-dev` |
+| Linux aarch64 (PortMaster handhelds) | `build-aarch64/` | `aarch64-linux-gnu-g++` + sysroot from `tools/setup_aarch64_sysroot.sh` |
+
+All three share the same source tree; platform selection is done via
+`#ifdef _WIN32` (only `src/platform/filesystem.cpp` and `src/platform/types.h`
+have any branching) and via CMake conditionals.
+
+### Linux native build
+
+```bash
+sudo apt install libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev cmake ninja-build
+cmake -B build-linux -S . -G Ninja
+cmake --build build-linux
+./build-linux/Icebreaker2
+```
+
+### aarch64 cross-compile (for PortMaster)
+
+```bash
+sudo apt install gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+bash tools/setup_aarch64_sysroot.sh                  # one-time, no sudo
+cmake -B build-aarch64 -S . -G Ninja \
+      -DCMAKE_TOOLCHAIN_FILE=cmake/aarch64-linux-gnu.cmake \
+      -DIB2_AARCH64_SYSROOT=$HOME/aarch64-sysroot/root
+cmake --build build-aarch64
+file build-aarch64/Icebreaker2   # ELF 64-bit LSB pie executable, ARM aarch64
+```
+
+The PortMaster .zip is built afterwards via:
+```bash
+python3 tools/build_portmaster_zip.py
+# → portmaster/icebreaker2.zip
+```
+
+### Save data location
+
+| Platform   | Default                                             | Override                |
+| ---------- | --------------------------------------------------- | ----------------------- |
+| Windows    | `%APPDATA%\Icebreaker2\`                            | (none)                  |
+| Linux      | `$XDG_DATA_HOME/Icebreaker2/` else `~/.local/share/Icebreaker2/` | `IB2_SAVE_DIR=...`      |
+| PortMaster | `ports/icebreaker2/conf/saves/` (set by launcher)   | (set by launcher .sh)   |
+
+The PortMaster launcher exports `IB2_SAVE_DIR` so saves stay on the SD card
+inside the port directory rather than scattering across `$HOME`.
+
+---
 
 ## Framerate Independence
 
