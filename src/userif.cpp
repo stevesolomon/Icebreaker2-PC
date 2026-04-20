@@ -1114,7 +1114,7 @@ void DrawLevelCompletedBox (int32 level, int32 mode)
 		case 13: offset = 17+16+17+16+17+16+17+16+17+16+17+16+17;		break;
 		case 14: offset = 17+16+17+16+17+16+17+16+17+16+17+16+17+16;	break;
 	}
-	appropriate_box->ccb_XPos = (offset + 38) << 16;
+	appropriate_box->ccb_XPos = (offset + 37) << 16;
 	
 	offset = (level / 15);
 	switch (offset)

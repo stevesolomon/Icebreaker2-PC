@@ -12,6 +12,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <SDL.h>
+#include <SDL_mixer.h>
 #include "cinepak.h"
 
 /* ── ICM file header ─────────────────────────────────────────────────── */
@@ -50,7 +51,12 @@ struct MoviePlayer {
 
     /* SDL resources */
     SDL_Texture  *texture;
-    SDL_AudioDeviceID audio_dev;
+    /* Audio is routed through SDL_mixer so we never open a second audio
+     * device — opening a second device while menu music is playing on the
+     * primary mixer device caused heap corruption on PortMaster (PulseAudio). */
+    Mix_Chunk    *mix_chunk;
+    uint8_t      *mix_audio_buf;     /* converted PCM owned by us; freed last */
+    int           mix_channel;
 
     /* Playback state */
     int           current_frame;
@@ -68,6 +74,7 @@ static inline uint32_t vid_r32(const uint8_t *p) {
 static inline bool MovieLoad(MoviePlayer *mp, const char *filename)
 {
     memset(mp, 0, sizeof(*mp));
+    mp->mix_channel = -1;
 
     FILE *f = fopen(filename, "rb");
     if (!f) {
@@ -160,9 +167,17 @@ static inline bool MovieLoad(MoviePlayer *mp, const char *filename)
 
 static inline void MovieFree(MoviePlayer *mp)
 {
-    if (mp->audio_dev) {
-        SDL_CloseAudioDevice(mp->audio_dev);
-        mp->audio_dev = 0;
+    if (mp->mix_channel >= 0) {
+        Mix_HaltChannel(mp->mix_channel);
+        mp->mix_channel = -1;
+    }
+    if (mp->mix_chunk) {
+        Mix_FreeChunk(mp->mix_chunk);
+        mp->mix_chunk = nullptr;
+    }
+    if (mp->mix_audio_buf) {
+        free(mp->mix_audio_buf);
+        mp->mix_audio_buf = nullptr;
     }
     if (mp->texture) {
         SDL_DestroyTexture(mp->texture);
@@ -199,23 +214,39 @@ static inline int MoviePlay(MoviePlayer *mp, SDL_Renderer *renderer)
         return 0;
     }
 
-    /* Start audio playback */
-    SDL_AudioSpec want, have;
-    SDL_zero(want);
-    want.freq = mp->header.sample_rate;
-    want.format = AUDIO_S16LSB;
-    want.channels = (uint8_t)mp->header.channels;
-    want.samples = 4096;
-    want.callback = nullptr; /* use queue */
-
-    mp->audio_dev = SDL_OpenAudioDevice(nullptr, 0, &want, &have,
-        SDL_AUDIO_ALLOW_FREQUENCY_CHANGE | SDL_AUDIO_ALLOW_FORMAT_CHANGE |
-        SDL_AUDIO_ALLOW_CHANNELS_CHANGE);
-    if (mp->audio_dev) {
-        /* Queue all audio at once */
-        const uint8_t *audio_ptr = mp->file_data + mp->header.audio_data_off;
-        SDL_QueueAudio(mp->audio_dev, audio_ptr, mp->header.audio_data_size);
-        SDL_PauseAudioDevice(mp->audio_dev, 0);
+    /* Convert and play audio through SDL_mixer (the same audio device used
+     * for menu music) so we never open a second OS audio device. */
+    if (mp->header.audio_data_size > 0 && mp->header.sample_rate > 0 &&
+        mp->header.channels > 0)
+    {
+        int mix_freq = 0, mix_channels = 0;
+        Uint16 mix_format = 0;
+        if (Mix_QuerySpec(&mix_freq, &mix_format, &mix_channels)) {
+            SDL_AudioCVT cvt;
+            int rc = SDL_BuildAudioCVT(&cvt,
+                AUDIO_S16LSB, (uint8_t)mp->header.channels, mp->header.sample_rate,
+                mix_format,   (uint8_t)mix_channels,        mix_freq);
+            if (rc >= 0) {
+                cvt.len = (int)mp->header.audio_data_size;
+                size_t buf_len = (size_t)cvt.len * (cvt.len_mult > 0 ? cvt.len_mult : 1);
+                mp->mix_audio_buf = (uint8_t *)malloc(buf_len);
+                if (mp->mix_audio_buf) {
+                    memcpy(mp->mix_audio_buf,
+                           mp->file_data + mp->header.audio_data_off,
+                           mp->header.audio_data_size);
+                    cvt.buf = mp->mix_audio_buf;
+                    if (rc == 0 || SDL_ConvertAudio(&cvt) == 0) {
+                        Uint32 final_len = (rc == 0)
+                            ? mp->header.audio_data_size
+                            : (Uint32)cvt.len_cvt;
+                        mp->mix_chunk = Mix_QuickLoad_RAW(mp->mix_audio_buf, final_len);
+                        if (mp->mix_chunk) {
+                            mp->mix_channel = Mix_PlayChannel(-1, mp->mix_chunk, 0);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /* Calculate frame timing */
@@ -303,12 +334,18 @@ static inline int MoviePlay(MoviePlayer *mp, SDL_Renderer *renderer)
     }
 
 done:
-    /* Stop and clean up audio */
-    if (mp->audio_dev) {
-        SDL_PauseAudioDevice(mp->audio_dev, 1);
-        SDL_ClearQueuedAudio(mp->audio_dev);
-        SDL_CloseAudioDevice(mp->audio_dev);
-        mp->audio_dev = 0;
+    /* Stop and clean up mixer-routed audio */
+    if (mp->mix_channel >= 0) {
+        Mix_HaltChannel(mp->mix_channel);
+        mp->mix_channel = -1;
+    }
+    if (mp->mix_chunk) {
+        Mix_FreeChunk(mp->mix_chunk);
+        mp->mix_chunk = nullptr;
+    }
+    if (mp->mix_audio_buf) {
+        free(mp->mix_audio_buf);
+        mp->mix_audio_buf = nullptr;
     }
 
     if (mp->texture) {
