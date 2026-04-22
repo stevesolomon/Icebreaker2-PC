@@ -57,7 +57,7 @@ bool InitGraphics(ScreenCtx *sc, int num_pages)
     }
 
     g_window = SDL_CreateWindow(
-        "Icebreaker 2",
+        "Icebreaker II Turbo",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         LOGICAL_WIDTH * SCALE_FACTOR, LOGICAL_HEIGHT * SCALE_FACTOR,
         win_flags

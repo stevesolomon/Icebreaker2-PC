@@ -172,6 +172,22 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/src/assets
 )
 
+# ── Windows: stage the runtime tree in its own subdirectory ─────────────────
+# Without this the .exe + assets + every vcpkg-copied SDL2*.dll sit at the top
+# of build/ alongside the build-system bookkeeping (CMakeFiles/, .ninja_deps,
+# .pdb/.ilk, etc). Redirect the runtime artefacts into build/Icebreaker2/ so
+# the runtime tree is self-contained and easy to zip up or share.
+if(WIN32)
+    set(IB2_RUNTIME_DIR "${CMAKE_BINARY_DIR}/Icebreaker2")
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY         "${IB2_RUNTIME_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY_DEBUG   "${IB2_RUNTIME_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY_RELEASE "${IB2_RUNTIME_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${IB2_RUNTIME_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL     "${IB2_RUNTIME_DIR}"
+    )
+endif()
+
 # ── Compiler definitions ─────────────────────────────────────────────────────
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     IB2_SDL_PORT=1

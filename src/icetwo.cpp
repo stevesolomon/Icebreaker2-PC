@@ -31,6 +31,9 @@
 #include "userif.h"
 #include "PlayMusic.h"
 #include "memcheck.h"
+#ifdef _WIN32
+#include <windows.h>
+#endif
 /***** global variables used globally *****/
 
 ScreenContext			g_screen;
@@ -2466,9 +2469,62 @@ int main()
 
 	/* Unbuffer stdout so printf() output isn't lost on crash. The launcher
 	 * redirects to a non-tty (tee), which makes stdout block-buffered by
-	 * default — that hides every printf preceding a segfault. */
-	setvbuf(stdout, NULL, _IOLBF, 0);
-	setvbuf(stderr, NULL, _IOLBF, 0);
+	 * default — that hides every printf preceding a segfault.
+	 * Use _IONBF (no buffering) which ignores size; _IOLBF with size=0
+	 * trips the MSVC debug CRT assertion (size must be >= 2). */
+	setvbuf(stdout, NULL, _IONBF, 0);
+	setvbuf(stderr, NULL, _IONBF, 0);
+
+#ifdef _WIN32
+	/* Windows: redirect every printf / fprintf(stderr, ...) and SDL_Log
+	 * message into log.txt next to the exe. We freopen the std streams so
+	 * any code path (including third-party libs and crash-time fprintfs)
+	 * lands in the file, and we install a custom SDL log handler that
+	 * writes formatted lines to the same file. We do NOT chain the SDL
+	 * default handler — it writes to stderr, which is now the log file,
+	 * which would produce duplicate lines. */
+	{
+		char *base = SDL_GetBasePath();
+		char log_path[1024];
+		log_path[0] = '\0';
+		if (base) {
+			SDL_snprintf(log_path, sizeof(log_path), "%slog.txt", base);
+			SDL_free(base);
+		}
+		if (log_path[0]) {
+			FILE *fout = freopen(log_path, "w", stdout);
+			if (fout) {
+				setvbuf(stdout, NULL, _IONBF, 0);
+				/* Point stderr at the same file so SDL/library writes
+				 * to stderr also land in log.txt. Use the underlying
+				 * fd so both streams share one file handle. */
+				if (freopen(log_path, "a", stderr) != nullptr) {
+					setvbuf(stderr, NULL, _IONBF, 0);
+				}
+				/* Also send Windows debugger output (OutputDebugString)
+				 * targets through SDL_Log's normal channel. */
+				auto file_log = +[](void *userdata, int category,
+				                    SDL_LogPriority priority,
+				                    const char *message)
+				{
+					static const char *prio[] = {
+						"", "VERBOSE", "DEBUG", "INFO", "WARN", "ERROR",
+						"CRITICAL"
+					};
+					const char *pname = (priority >= 1 && priority <= 6)
+						? prio[priority] : "?";
+					fprintf(stdout, "%s: %s\n", pname, message);
+					OutputDebugStringA(message);
+					OutputDebugStringA("\n");
+				};
+				SDL_LogSetOutputFunction(file_log, nullptr);
+				fprintf(stdout,
+				        "== Icebreaker 2 log opened (%s %s) ==\n",
+				        __DATE__, __TIME__);
+			}
+		}
+	}
+#endif
 
 	/* Initialise filesystem FIRST, before any asset/save load. The PortMaster
 	 * launcher exports IB2_ASSETS_DIR and IB2_SAVE_DIR; on the desktop builds
