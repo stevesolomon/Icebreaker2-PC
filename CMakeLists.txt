@@ -18,7 +18,7 @@
 #    - MSVC, MinGW-w64, GCC, or Clang
 ################################################################################
 cmake_minimum_required(VERSION 3.20)
-project(Icebreaker2 VERSION 6.6 LANGUAGES CXX)
+project(Icebreaker2 VERSION 6.8 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

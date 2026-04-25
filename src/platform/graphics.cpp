@@ -301,6 +301,15 @@ void ClearScreen(ScreenCtx *sc)
     SDL_SetRenderTarget(g_renderer, nullptr);
 }
 
+void ClearScreenPage(Screen *screen)
+{
+    SDL_Texture *target = (SDL_Texture *)screen;
+    if (!target) return;
+    SDL_SetRenderTarget(g_renderer, target);
+    SDL_SetRenderDrawColor(g_renderer, 0, 0, 0, 255);
+    SDL_RenderClear(g_renderer);
+}
+
 /* ── Effects ─────────────────────────────────────────────────────────────── */
 
 void FadeToBlack(ScreenCtx *sc, int32 frames)

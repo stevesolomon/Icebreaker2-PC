@@ -2332,12 +2332,25 @@ bool seeker::ChasingWildGeese (dude *target)
 	test_row = target->current_row;
 	test_column = target->current_column;
 
-	while ((h < TILE_WIDTH_75) || (v < TILE_HEIGHT_75))
+	/* Accumulate in 16.16 fixed point — at high refresh rates AnimateSeekers
+	 * scales horz/vert speed below 1<<16, so the previous code (h += speed >> 16)
+	 * accumulated 0 forever and froze the game. */
+	const int32 limit_h = TILE_WIDTH_75  << 16;
+	const int32 limit_v = TILE_HEIGHT_75 << 16;
+	while ((h < limit_h) || (v < limit_v))
 	{
 		HeadForTheDudemeyer(target->walk_anim[target->direction].current_frame_ccb,
 		                    target->horz_speed, target->vert_speed);
-		h += target->horz_speed >> 16;
-		v += target->vert_speed >> 16;
+		int32 step_h = target->horz_speed;
+		int32 step_v = target->vert_speed;
+		if (step_h < 0) step_h = -step_h;
+		if (step_v < 0) step_v = -step_v;
+		/* Guarantee forward progress even if both speeds are zero (shouldn't
+		 * happen, but defensive — better to advance one subpixel than hang). */
+		if (step_h == 0 && step_v == 0)
+			step_h = 1;
+		h += step_h;
+		v += step_v;
 		test_hazard = (CCB *) NULL;
 		if (pavement.CheckForDanger(
 	                 FIND_CENTER_X(target->walk_anim[target->direction].current_frame_ccb),

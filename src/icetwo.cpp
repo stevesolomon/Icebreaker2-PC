@@ -102,6 +102,46 @@ weapon					fireball;
 static uint64_t g_clock_start_us = 0;   /* microsecond offset at startup */
 struct timeval current_time;             /* kept for compatibility */
 
+/***** Watchdog: detects main-loop hangs and dumps last-known phase to log *****/
+
+static SDL_atomic_t g_loop_frame;             /* monotonic counter bumped each iteration */
+static const char *volatile g_loop_phase = "boot";   /* most recent phase tag */
+static const char *volatile g_loop_level_name = "(none)"; /* current level for context */
+static int32 volatile g_loop_level_num = -1;
+static SDL_atomic_t g_watchdog_quit;
+
+static int WatchdogThread(void *unused)
+{
+	(void)unused;
+	int last_frame = SDL_AtomicGet(&g_loop_frame);
+	int stuck_secs = 0;
+	while (!SDL_AtomicGet(&g_watchdog_quit)) {
+		SDL_Delay(1000);
+		int now_frame = SDL_AtomicGet(&g_loop_frame);
+		if (now_frame == last_frame) {
+			stuck_secs++;
+			if (stuck_secs == 5 || (stuck_secs > 5 && stuck_secs % 5 == 0)) {
+				SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+				             "WATCHDOG: main loop stalled %ds — phase='%s' frame=%d level=%ld (%s)",
+				             stuck_secs,
+				             g_loop_phase ? g_loop_phase : "(null)",
+				             now_frame,
+				             (long)g_loop_level_num,
+				             g_loop_level_name ? g_loop_level_name : "(null)");
+			}
+		} else {
+			if (stuck_secs >= 5) {
+				SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+				            "WATCHDOG: main loop recovered after %ds (phase='%s' frame=%d)",
+				            stuck_secs, g_loop_phase ? g_loop_phase : "(null)", now_frame);
+			}
+			stuck_secs = 0;
+			last_frame = now_frame;
+		}
+	}
+	return 0;
+}
+
 /* Helper: update current_time from SDL */
 static void UpdateCurrentTime(void)
 {
@@ -1405,6 +1445,7 @@ void ResultsHandler(int32 &x_change, int32 &y_change)
 	int32  tile_type;
 	CCB    *tile;
 
+	g_loop_phase = "results:swamp-check";
 	if (on_slippery_ice)
 		icebreaker.IceMovementAdjustments(x_change,y_change,action);
 		
@@ -1430,7 +1471,9 @@ void ResultsHandler(int32 &x_change, int32 &y_change)
 			y_change += 0x00015000; /* i.e. 1.5 */
 	}
 
+	g_loop_phase = "results:morgue";
 	morgue.MaintainMorgue();
+	g_loop_phase = "results:change-dir";
 	successfully_moved = icebreaker.ChangeDirection();
 
 	/* Scale movement by delta-time for framerate independence */
@@ -1439,9 +1482,25 @@ void ResultsHandler(int32 &x_change, int32 &y_change)
 
 	if ((x_change != 0) || (y_change != 0))
 	{
+		int32 move_iters = 0;
+		const int32 initial_x = x_change;
+		const int32 initial_y = y_change;
+		g_loop_phase = "results:move-loop";
 		successfully_moved = FALSE;
 		while (!(successfully_moved))
 		{
+			if (++move_iters > 4096) {
+				/* Defensive bail-out: this loop should converge in O(max(|dx|,|dy|)>>16)
+				 * iterations as the deltas decay by 1<<16 each pass. If we somehow exceed
+				 * 4096 iterations (~64K subpixels), something is wrong — log it and bail
+				 * so we don't hang the entire game. */
+				SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+				             "ResultsHandler: move-loop runaway, breaking after %d iters "
+				             "(initial dx=0x%lx dy=0x%lx, current dx=0x%lx dy=0x%lx)",
+				             move_iters, (long)initial_x, (long)initial_y,
+				             (long)x_change, (long)y_change);
+				break;
+			}
 			icebreaker.MoveDudemeyer(-(x_change),-(y_change));
 			population.MoveWorld(x_change,y_change);
 			if (icebreaker.Obstructed(FALSE))
@@ -1484,12 +1543,15 @@ void ResultsHandler(int32 &x_change, int32 &y_change)
 		}
 	}
 
+	g_loop_phase = "results:bullets";
 	fireball.MoveBullets(x_change,y_change);
+	g_loop_phase = "results:obstructed-true";
 	icebreaker.Obstructed(TRUE);
 	if (g_dead)
 		return;
 
 	tile = (CCB *) NULL;
+	g_loop_phase = "results:check-danger";
 	if (pavement.CheckForDanger(FIND_CENTER_X (icebreaker.dudemeyer_cel),
 									  	 FIND_CENTER_Y (icebreaker.dudemeyer_cel),
 									  	 icebreaker.dudemeyer_object->col_detect_x
@@ -1504,6 +1566,7 @@ void ResultsHandler(int32 &x_change, int32 &y_change)
 
 	if (check_for_ice)
 	{
+		g_loop_phase = "results:examine-tile";
 		pavement.ExamineTile (FIND_CENTER_X (icebreaker.dudemeyer_cel),
 							  		 FIND_CENTER_Y (icebreaker.dudemeyer_cel),
 									 icebreaker.dudemeyer_object->col_detect_x
@@ -1521,11 +1584,14 @@ void ResultsHandler(int32 &x_change, int32 &y_change)
 		}
 	}
 
+	g_loop_phase = "results:animate-seekers";
 	enemies.AnimateSeekers(x_change,y_change);
+	g_loop_phase = "results:empty-trash";
 	population.EmptyTrash();
 
 	if (random_changes)
 	{
+		g_loop_phase = "results:transform-solid";
 		if (population.TransformSolid())
 			PlaySoundEffect(PING_SOUND);
 	}
@@ -2190,6 +2256,8 @@ int32 PlayALevel(int32 whats_next)
 				printf("Level: %ld (%s). ",level,level_name);
 				InitializeIcebreaker(level,g_skill_level);
 			}
+			g_loop_level_name = level_name;
+			g_loop_level_num = level;
 			switch (g_skill_level)
 			{
 				case EASY:      printf("[E] "); break;
@@ -2265,6 +2333,7 @@ int32 PlayALevel(int32 whats_next)
 			/***** main program loop *****/
 			while (FOREVER)
 			{
+				g_loop_phase = "input";
 				switch (operating_mode)
 				{
 					case PICK_AND_PLAY_MODE:	InputHandler   (x_change,y_change);		break;
@@ -2272,9 +2341,14 @@ int32 PlayALevel(int32 whats_next)
 					case CANNED_DEMO_MODE:		InputRebuilder (x_change,y_change);		break;
 				}
 				// this call used only for testing --->>> Benchmark();
+				g_loop_phase = "video";
 				VideoHandler();
 				if (!(game_paused))
+				{
+					g_loop_phase = "results";
 					ResultsHandler(x_change,y_change);
+				}
+				g_loop_phase = "post";
 				if ((operating_mode == DEMO_MODE_ABORT) || (operating_mode == GAME_ABORT))
 				{
 					GameOver(TRUE);
@@ -2301,7 +2375,9 @@ int32 PlayALevel(int32 whats_next)
 					if (g_dead)
 						break;
 				}
+				g_loop_phase = "scavenge";
 				ScavengeMem();
+				SDL_AtomicAdd(&g_loop_frame, 1);
 			}
 		}
 		
@@ -2374,7 +2450,7 @@ void ScreenSaver(void)
 
 	if (!faded)
 		FadeToBlack(&g_screen, 40);
-	DrawScreenCels(g_screen.sc_Screens[g_screen.sc_curScreen],black_background);
+	ClearScreenPage(g_screen.sc_Screens[g_screen.sc_curScreen]);
 	DisplayScreen(g_screen.sc_Screens[g_screen.sc_curScreen],0);
 	FadeFromBlack(&g_screen, 0);
 	faded = FALSE;
@@ -2438,7 +2514,7 @@ void ScreenSaver(void)
 	{
 		UpdateDeltaTime();
 		g_screen.sc_curScreen = 1 - g_screen.sc_curScreen;
-		DrawScreenCels(g_screen.sc_Screens[g_screen.sc_curScreen],black_background);
+		ClearScreenPage(g_screen.sc_Screens[g_screen.sc_curScreen]);
 		enemies.MoveBoredSeekersAround();
 		population.DisplaySolids();
 		DisplayScreen(g_screen.sc_Screens[g_screen.sc_curScreen],0);
@@ -2532,6 +2608,14 @@ int main()
 	InitFilesystem();
 	SDL_Log("== Icebreaker 2 PC port build %s %s ==", __DATE__, __TIME__);
 	SDL_Log("== assets dir: %s ==", GetAssetsDir());
+
+	/* Spawn watchdog thread: if the main game loop stalls (no frame
+	 * advance for >=5s), the watchdog logs the last-known phase and
+	 * level to log.txt. Helps diagnose hard freezes that produce no
+	 * other output. */
+	SDL_AtomicSet(&g_loop_frame, 0);
+	SDL_AtomicSet(&g_watchdog_quit, 0);
+	SDL_CreateThread(WatchdogThread, "ib2-watchdog", nullptr);
 
 	vbl = GetVBLIOReq();
 	level = FIRST_LEVEL;

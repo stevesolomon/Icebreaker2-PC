@@ -11,7 +11,7 @@
 #ifndef ICEBREAKER
 #define ICEBREAKER 1
 
-#define VERSION    "6.6"
+#define VERSION    "6.8"
 
 /* Was used during 3DO development for debug shortcuts and a deliberate
  * crash-on-X test path; the original source comment was "this line is to

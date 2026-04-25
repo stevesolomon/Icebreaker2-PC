@@ -117,6 +117,7 @@ void  UnloadCel(CCB *cel);
 void DrawScreenCels(Screen *screen, CCB *cel_list);
 void DisplayScreen(Screen *screen, int field);
 void ClearScreen(ScreenCtx *sc);
+void ClearScreenPage(Screen *screen);
 
 /* Effects */
 void FadeToBlack(ScreenCtx *sc, int32 frames);
