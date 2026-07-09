@@ -1434,9 +1434,17 @@ void  solids::CreateAnimatedSolid (anim_source *original, int32 frame_rate,
 			new_anisolid->solid_anim.AdvanceFrame();
 	}
 
+	/* Nudge concrete/steel one WHOLE frame off frame 0 so they come to rest at
+	   the AnimCued() "cold" state (current_frame_number >> 16 == 1) rather than
+	   sitting on the frame-0 wrap point.  This MUST be unscaled: the dt-scaled
+	   AdvanceFrame() advances only a fraction of a frame at high/uncapped frame
+	   rates, leaving the pyramid at frame 0 where !AnimCued() is true, so the
+	   steel-cooling block in MaintainAnimatedObjects engages on a never-hit
+	   pyramid and the 20-frame wrap-back shoots it up to full heat at level
+	   start (steel pyramids appearing red-hot the instant a level loads). */
 	if ((solids_entry->object_type == CONCRETE_PYRAMID)
 	 || (solids_entry->object_type == STEEL_PYRAMID))
-		new_anisolid->solid_anim.AdvanceFrame();
+		new_anisolid->solid_anim.AdvanceFrameUnscaled();
 
 	i = solids_entry->cel->ccb_XPos;
 	j = solids_entry->cel->ccb_YPos;
@@ -1540,7 +1548,22 @@ void  solids::MaintainAnimatedObjects(void)
 				 && (traversal_ptr->solids_entry->object_type != STEEL_PYRAMID))
 					traversal_ptr->solid_anim.AdvanceFrame();
 
-				/* Special handling for steel pyramids.*/
+				/* Special handling for steel pyramids.
+				   The original 3DO code ran at a fixed ~12fps and, once per frame,
+				   decremented `special` and then cooled the pyramid down by one
+				   animation frame whenever `special` landed on a multiple of
+				   STEEL_COOLING_RATE (below the current heat threshold).  That gate
+				   only limits the cooling rate because `special` changes by exactly 1
+				   every frame.  To stay frame-rate independent under an uncapped
+				   frame rate we run the decrement off a fixed 12fps accumulator, and
+				   the cooling check MUST live inside that loop so it is evaluated
+				   exactly once per simulated tick (i.e. once per `special--`).  Left
+				   outside the loop it fired on every rendered frame while `special`
+				   sat on a multiple of the rate, cooling the pyramid to nothing in a
+				   single burst.  The wrap-back below also uses AdvanceFrameUnscaled
+				   so it steps exactly (STEEL_ANIM_FRAME_COUNT - 1) whole frames --
+				   wrapping the 21-frame heat loop back down by one frame -- rather
+				   than the dt-scaled fractional step AdvanceFrame would take. */
 				if ((traversal_ptr->solids_entry->object_type == STEEL_PYRAMID)
 				 && (!(traversal_ptr->solid_anim.AnimCued())))
 				{
@@ -1548,13 +1571,13 @@ void  solids::MaintainAnimatedObjects(void)
 					while (traversal_ptr->special_accum >= 1.0f) {
 						traversal_ptr->special_accum -= 1.0f;
 						traversal_ptr->special--;
-					}
-					if ((traversal_ptr->special < STEEL_COOLING_RATE
-		                    * (traversal_ptr->solid_anim.current_frame_number >> 16))
-					 && (traversal_ptr->special % STEEL_COOLING_RATE == 0))
-					{
-						for (i = 0; i < STEEL_ANIM_FRAME_COUNT - 1; i++)
-							traversal_ptr->solid_anim.AdvanceFrame();
+						if ((traversal_ptr->special < STEEL_COOLING_RATE
+			                    * (traversal_ptr->solid_anim.current_frame_number >> 16))
+						 && (traversal_ptr->special % STEEL_COOLING_RATE == 0))
+						{
+							for (i = 0; i < STEEL_ANIM_FRAME_COUNT - 1; i++)
+								traversal_ptr->solid_anim.AdvanceFrameUnscaled();
+						}
 					}
 				}
 				traversal_ptr->solids_entry->cel->ccb_SourcePtr
