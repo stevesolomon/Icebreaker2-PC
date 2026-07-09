@@ -6,7 +6,7 @@ This directory contains the assembled PortMaster v2 port of Icebreaker 2.
 
 ```
 portmaster/
-├── icebreaker2.zip                       ← the shippable artefact
+├── icebreaker2-<version>-portmaster.zip   ← the shippable artefact
 └── icebreaker2/
     ├── port.json                         port metadata (PortMaster v2 schema)
     ├── README.md                         user-facing readme
@@ -35,7 +35,7 @@ cp -R assets portmaster/icebreaker2/icebreaker2/assets
 
 # 3. Build the zip with proper Unix perms + line endings
 python3 tools/build_portmaster_zip.py
-# → portmaster/icebreaker2.zip
+# → portmaster/icebreaker2-<version>-portmaster.zip
 ```
 
 ## Submitting to PortMaster

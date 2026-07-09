@@ -217,7 +217,7 @@ bool  weapon::DetectHit (bullet *shot)
 	{
 		shot->state = BULLET_EXPLODING;
 		animated_obstruction = population.LocateAnimatedObject(obstruction);		
-		animated_obstruction->solid_anim.AdvanceFrame();
+		animated_obstruction->solid_anim.AdvanceFrameUnscaled();
 		if (animated_obstruction->solid_anim.AnimComplete())
 		{
 			PlaySoundEffect(CONCRETE_CRUMBLE_SOUND);
@@ -267,7 +267,7 @@ bool  weapon::DetectHit (bullet *shot)
 		for (i = 0; i < 4; i++)
 		{
 			if (!(animated_obstruction->solid_anim.AnimComplete()))
-				animated_obstruction->solid_anim.AdvanceFrame();
+				animated_obstruction->solid_anim.AdvanceFrameUnscaled();
 		}
 		animated_obstruction->special = STEEL_COOLING_RATE
 		                    * (animated_obstruction->solid_anim.current_frame_number >> 16);

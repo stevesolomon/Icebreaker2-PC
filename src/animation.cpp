@@ -144,6 +144,24 @@ void anim_user::AdvanceFrame(void)
 	current_frame_ccb->texture       = next_frame_ccb->texture;
 }
 
+/*************************  anim_user::AdvanceFrameUnscaled  ****************************
+   Like AdvanceFrame but bypasses the delta-time scaling applied by AdvanceFrame.  Use
+this for event-driven animation steps (e.g. one step per pyramid hit) where the caller
+guarantees a discrete advance and dt-scaling would otherwise reduce per-event progress
+below one frame at high refresh rates — which on the 3DO original would always advance
+exactly one frame regardless of the running framerate.
+*****************************************************************************************/
+
+void anim_user::AdvanceFrameUnscaled(void)
+{
+	anim_source_pointer->anim_pointer->cur_Frame = current_frame_number;
+	next_frame_ccb = GetAnimCel(anim_source_pointer->anim_pointer, anim_frame_rate);
+	current_frame_number = anim_source_pointer->anim_pointer->cur_Frame;
+	current_frame_ccb->ccb_SourcePtr = next_frame_ccb->ccb_SourcePtr;
+	current_frame_ccb->ccb_PLUTPtr   = next_frame_ccb->ccb_PLUTPtr;
+	current_frame_ccb->texture       = next_frame_ccb->texture;
+}
+
 /******************************  anim_user::SetFrame  ************************************
    Snap the animation directly to a specific integer frame index. Useful when game logic
 expects to land on an exact frame and the dt-scaled AdvanceFrame loop could otherwise

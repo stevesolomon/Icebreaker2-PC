@@ -36,7 +36,7 @@ file build-aarch64/Icebreaker2   # ELF 64-bit LSB pie executable, ARM aarch64
 The PortMaster .zip is built afterwards via:
 ```bash
 python3 tools/build_portmaster_zip.py
-# → portmaster/icebreaker2.zip
+# → portmaster/icebreaker2-<version>-portmaster.zip
 ```
 
 ### Save data location

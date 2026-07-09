@@ -1,10 +1,21 @@
 #!/usr/bin/env python3
 """Build the PortMaster zip with Unix permissions preserved."""
-import os, stat, zipfile
+import os, re, stat, zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC  = os.path.join(ROOT, "portmaster", "icebreaker2")
-OUT  = os.path.join(ROOT, "portmaster", "icebreaker2.zip")
+
+def _read_version():
+    cml = os.path.join(ROOT, "CMakeLists.txt")
+    with open(cml, "r", encoding="utf-8") as fh:
+        for line in fh:
+            m = re.search(r"VERSION\s+([0-9][0-9.]*)", line)
+            if m:
+                return m.group(1)
+    return "0.0.0"
+
+VERSION = _read_version()
+OUT  = os.path.join(ROOT, "portmaster", f"icebreaker2-{VERSION}-portmaster.zip")
 
 # Files/dirs that must be marked executable inside the zip.
 EXEC = {"Icebreaker 2.sh", "icebreaker2/Icebreaker2.aarch64"}
